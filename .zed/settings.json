@@ -1,0 +1,25 @@
+{
+  "format_on_save": "on",
+  "formatter": {
+    "language_server": {
+      "name": "oxfmt"
+    }
+  },
+  "prettier": {
+    "allowed": false
+  },
+  "languages": {
+    "TypeScript": {
+      "language_servers": ["typescript-ls", "oxfmt", "oxlint"],
+      "code_actions_on_format": {
+        "source.removeUnusedImports": true
+      }
+    },
+    "TSX": {
+      "language_servers": ["typescript-ls", "oxfmt", "oxlint"],
+      "code_actions_on_format": {
+        "source.removeUnusedImports": true
+      }
+    }
+  }
+}

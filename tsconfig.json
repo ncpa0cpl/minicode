@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "module": "nodenext",
+    "target": "esnext",
+    "moduleResolution": "bundler",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "strict": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@ncpa0cpl/vanilla-jsx",
+    "verbatimModuleSyntax": false,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "auto",
+    "skipLibCheck": true,
+    "types": ["node"]
+  }
+}
