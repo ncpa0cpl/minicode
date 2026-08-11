@@ -192,7 +192,7 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
     </div>
   );
 
-  ctx.focusedTab.observe(() => {
+  ctx.focusedTab.add(() => {
     requestAnimationFrame(() => {
       const el = tabBar.querySelector(".tab-btn.active");
       if (el) {

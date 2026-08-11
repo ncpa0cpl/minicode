@@ -7,7 +7,6 @@ import { Path } from "../../utils/path";
 import { ContextMenu, type MenuItem } from "../context-menu/context-menu";
 
 const MIN_WIDTH = 150;
-const DEFAULT_WIDTH = 360;
 
 const FileTreeStyles = css`
   .file-tree-wrap {
@@ -126,7 +125,7 @@ type ContextMenuState = {
 type Clipboard = { path: string; cut: boolean };
 
 export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
-  const width = sig(DEFAULT_WIDTH);
+  const width = ctx.fileTreeWidth;
   const contextMenu = sig<ContextMenuState | null>(null);
   const clipboard = sig<Clipboard | null>(null);
 

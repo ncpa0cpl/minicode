@@ -1,6 +1,6 @@
 import { sig, type Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { File } from "./files";
-import { Filesystem, MiniCodeOptions, type Dirent } from "./mini-code";
+import { Filesystem, MiniCodeOptions, type Dirent, type Storage } from "./mini-code";
 import { Path } from "./utils/path";
 import { EditorView } from "codemirror";
 import { Compartment } from "@codemirror/state";
@@ -55,26 +55,60 @@ export class MiniCodeContext {
   availableThemes: Theme[] = [];
   private dirIndex = new Map<string, File>();
   terminals = sig<TerminalTabData[]>([]);
-  terminalVisible = sig(false);
+  terminalVisible: Signal<boolean>;
+  activeTerminalId = sig<number | null>(null);
+  fileTreeWidth: Signal<number>;
+  terminalHeight: Signal<number>;
   private terminalFactory: TerminalFactory | undefined;
   private nextTerminalId = 0;
+  private storage: Storage;
+  private storageKeys = {
+    theme: "minicode:theme",
+    terminalVisible: "minicode:terminal-visible",
+    fileTreeWidth: "minicode:file-tree-width",
+    terminalHeight: "minicode:terminal-height",
+  } as const;
 
   constructor(private opts: MiniCodeOptions) {
     this.filesystem = opts.filesystem;
     this.languages = opts.languages;
     this.syntaxOverride = opts.syntaxTheme;
     this.terminalFactory = opts.terminal;
+    this.storage = opts.storage ?? localStorage;
     this.availableThemes = (opts.themes ?? []).concat([
       darkTheme,
       lightTheme,
       gnomeDarkTheme,
       gnomeLightTheme,
     ]);
-    this.theme = sig<Theme>(this.resolveTheme(opts.theme));
+
+    const storedThemeName = this.storage.getItem(this.storageKeys.theme) ?? undefined;
+    this.theme = sig<Theme>(this.resolveTheme(opts.theme ?? storedThemeName));
     if (!this.availableThemes.some((t) => t.name === this.theme.get().name)) {
       this.availableThemes.unshift(this.theme.get());
     }
+
+    this.terminalVisible = sig(this.storage.getItem(this.storageKeys.terminalVisible) === "true");
+    this.fileTreeWidth = sig(Number(this.storage.getItem(this.storageKeys.fileTreeWidth)) || 360);
+    this.terminalHeight = sig(Number(this.storage.getItem(this.storageKeys.terminalHeight)) || 250);
+
+    this.terminalVisible.add((v) => {
+      this.storage.setItem(this.storageKeys.terminalVisible, String(v));
+    });
+    this.fileTreeWidth.add((w) => {
+      this.storage.setItem(this.storageKeys.fileTreeWidth, String(w));
+    });
+    this.terminalHeight.add((h) => {
+      this.storage.setItem(this.storageKeys.terminalHeight, String(h));
+    });
+
     this.lspManager = new LspManager(opts.lsp ?? {}, toUri(opts.root));
+
+    if (this.terminalVisible.get()) {
+      if (this.hasTerminalSupport()) {
+        this.openTerminal();
+      }
+    }
   }
 
   resolveTheme(name?: string | Theme) {
@@ -100,6 +134,7 @@ export class MiniCodeContext {
   setTheme(input: ThemeInput) {
     const next = this.resolveTheme(input);
     this.theme.dispatch(next);
+    this.storage.setItem(this.storageKeys.theme, next.name);
     const xtermTheme = this.getXtermTheme();
     for (const tab of this.opendTabs.get()) {
       tab.view?.dispatch({
@@ -434,6 +469,7 @@ export class MiniCodeContext {
 
     this.terminals.dispatch((prev) => [...prev, tabData]);
     this.terminalVisible.dispatch(true);
+    this.activeTerminalId.dispatch(id);
 
     requestAnimationFrame(() => fitAddon.fit());
   }

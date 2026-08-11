@@ -172,14 +172,12 @@ const TerminalStyles = css`
 `;
 
 const MIN_HEIGHT = 80;
-const DEFAULT_HEIGHT = 250;
 
 export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
-  const height = sig(DEFAULT_HEIGHT);
-  const activeTerminalId = sig<number | null>(null);
+  const height = ctx.terminalHeight;
+  const activeTerminalId = ctx.activeTerminalId;
 
-  const updateActive = () => {
-    const terms = ctx.terminals.get();
+  const updateActive = (terms: TerminalTabData[]) => {
     if (terms.length === 0) {
       activeTerminalId.dispatch(null);
       return;
@@ -190,7 +188,7 @@ export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
     }
   };
 
-  ctx.terminals.observe(updateActive);
+  ctx.terminals.add(updateActive);
 
   const onPointerDown = (e: PointerEvent) => {
     e.preventDefault();

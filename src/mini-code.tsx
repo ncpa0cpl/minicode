@@ -41,6 +41,12 @@ export interface Filesystem {
   }>;
 }
 
+export type Storage = {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+};
+
 export type MiniCodeOptions = {
   root: string;
   filesystem: Filesystem;
@@ -50,6 +56,7 @@ export type MiniCodeOptions = {
   languages?: LanguagesConfig;
   lsp?: LspFactoryConfig;
   terminal?: TerminalFactory;
+  storage?: Storage;
 };
 
 const minicodeStyles = css`
