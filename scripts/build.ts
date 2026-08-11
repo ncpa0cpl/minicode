@@ -21,6 +21,7 @@ async function main() {
     tsConfig: p("tsconfig.json"),
     esbuildOptions: {
       jsxImportSource: "@ncpa0cpl/vanilla-jsx",
+      external: ["codemirror", "@codemirror/*", "style-mod"],
       plugins: [
         EmbedCssPlugin({
           write: false,
@@ -52,7 +53,11 @@ class StylesheetFile {
   ) {}
 
   append(style: string) {
-    this.styles.push(style + "\n");
+    style = style + "\n";
+    if (this.styles.some((s) => s === style)) {
+      return;
+    }
+    this.styles.push(style);
   }
 
   flush() {

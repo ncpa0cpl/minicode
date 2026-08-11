@@ -1,6 +1,20 @@
 import { sig, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { Path } from "./utils/path";
 
+const collator = Intl.Collator(undefined, {
+  numeric: true,
+  caseFirst: "false",
+  sensitivity: "base",
+});
+
+function sortFiles(a: File, b: File) {
+  const dcmp = Number(b.isDir) - Number(a.isDir);
+  if (dcmp === 0) {
+    return collator.compare(a.name, b.name);
+  }
+  return dcmp;
+}
+
 export class File {
   private _path;
   private contents?: string;
@@ -14,7 +28,7 @@ export class File {
   ) {
     this._path = Path.from(path);
     if (isDirectory) {
-      this.children = sig((files ?? []).map((f) => sig(f)));
+      this.children = sig((files ?? []).sort(sortFiles).map((f) => sig(f)));
       this._expanded = sig(false);
     }
   }
