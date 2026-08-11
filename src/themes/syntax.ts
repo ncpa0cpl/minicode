@@ -94,6 +94,6 @@ export const lightSyntaxStyle: HighlightStyle = HighlightStyle.define([
 ]);
 
 export function defineSyntaxHighlighting(theme: Theme): Extension {
-  const style = theme.syntax ?? (theme.dark ? darkSyntaxStyle : lightSyntaxStyle);
+  const style = theme.syntax ?? (theme.variant === "dark" ? darkSyntaxStyle : lightSyntaxStyle);
   return syntaxHighlighting(style);
 }

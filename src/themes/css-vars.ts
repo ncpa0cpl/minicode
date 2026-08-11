@@ -2,7 +2,7 @@ import type { Theme } from "./index";
 
 const UI_TOKEN_MAP: Partial<Record<keyof Theme, string>> = {
   name: "--minicode-name",
-  dark: "--minicode-dark",
+  variant: "--minicode-variant",
   bg: "--minicode-bg",
   fg: "--minicode-fg",
   muted: "--minicode-muted",

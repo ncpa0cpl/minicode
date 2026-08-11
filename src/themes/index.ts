@@ -1,8 +1,8 @@
 import type { HighlightStyle } from "@codemirror/language";
 
 export interface Theme {
-  name: ThemeName;
-  dark: boolean;
+  name: string;
+  variant: "dark" | "light";
 
   bg: string;
   fg: string;
@@ -33,27 +33,10 @@ export type ThemeName = "dark" | "light" | (string & {});
 
 export type ThemeInput = ThemeName | Theme;
 
-import { darkTheme } from "./dark";
-import { lightTheme } from "./light";
-
-export const themes: Record<string, Theme> = {
-  dark: darkTheme,
-  light: lightTheme,
-};
-
-export function getTheme(name: ThemeName): Theme {
-  return themes[name] ?? darkTheme;
-}
-
-export function resolveTheme(input: ThemeInput): Theme {
-  if (typeof input === "string") {
-    return getTheme(input);
-  }
-  return input;
-}
-
-export { darkTheme } from "./dark";
-export { lightTheme } from "./light";
+export { darkTheme } from "./default-dark";
+export { lightTheme } from "./default-light";
+export { gnomeDarkTheme } from "./gnome-dark";
+export { gnomeLightTheme } from "./gnome-light";
 export { themeToCssVars } from "./css-vars";
 export { defineCodeMirrorTheme } from "./codemirror";
 export { defineSyntaxHighlighting, darkSyntaxStyle, lightSyntaxStyle } from "./syntax";

@@ -62,6 +62,15 @@ export function defineCodeMirrorTheme(theme: Theme): Extension {
         backgroundColor: theme.matchingBracket,
         outline: "none",
       },
+      "& .cm-foldPlaceholder": {
+        backgroundColor: theme.hover,
+        border: `1px solid ${theme.border}`,
+        color: theme.muted,
+        borderRadius: ".2em",
+        margin: "0 1px",
+        padding: "0 1px",
+        cursor: "pointer",
+      },
       "& .cm-scroller::-webkit-scrollbar": {
         width: "10px",
         height: "10px",
@@ -81,6 +90,6 @@ export function defineCodeMirrorTheme(theme: Theme): Extension {
         background: "transparent",
       },
     },
-    { dark: theme.dark },
+    { dark: theme.variant === "dark" },
   );
 }

@@ -1,12 +1,15 @@
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import { FileTree } from "./components/file-tree/file-tree";
 import { Tabs } from "./components/tabs/tabs";
+import { TerminalPanel } from "./components/terminal/terminal";
+import { TopBar } from "./components/topbar/topbar";
 import { MiniCodeContext } from "./context";
 import { stylesheet } from "./styles";
 import { css } from "embedcss";
-import { themeToCssVars, type ThemeInput } from "./themes";
+import { Theme, themeToCssVars, type ThemeInput } from "./themes";
 import type { LanguagesConfig } from "./languages";
 import type { LspFactoryConfig } from "./lsp/manager";
+import type { TerminalFactory } from "./terminal/types";
 import type { HighlightStyle } from "@codemirror/language";
 
 export type Dirent = {
@@ -22,7 +25,10 @@ export interface Filesystem {
   readFile(path: string, encoding: "utf-8"): Promise<string>;
   writeFile(path: string, data: string): Promise<void>;
   unlink(path: string): Promise<void>;
-  mkdir(path: string): Promise<void>;
+  rename(oldPath: string, newPath: string): Promise<void>;
+  copyFile(src: string, dest: string): Promise<void>;
+  rm(path: string, opts?: { recursive?: boolean; force?: boolean }): Promise<void>;
+  mkdir(path: string, opts?: { recursive?: boolean }): Promise<void>;
   watch(
     path: string,
     options?: {
@@ -39,20 +45,38 @@ export type MiniCodeOptions = {
   root: string;
   filesystem: Filesystem;
   theme?: ThemeInput;
+  themes?: Theme[];
   syntaxTheme?: HighlightStyle;
   languages?: LanguagesConfig;
   lsp?: LspFactoryConfig;
+  terminal?: TerminalFactory;
 };
 
 const minicodeStyles = css`
-  .minicode-editor {
+  .minicode-root {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     width: 100%;
     height: 100%;
 
     scrollbar-width: thin;
     scrollbar-color: var(--minicode-border, #2a2f3a) transparent;
+  }
+
+  .minicode-editor {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .main-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
   }
 
   :host {
@@ -131,14 +155,34 @@ export function MiniCode(opts: MiniCodeOptions) {
   const shadowRootHost = <div class="minicode-shadow-root"></div>;
   const shadowRoot = shadowRootHost.attachShadow({ mode: "closed" });
   ctx.shadowRoot = shadowRoot;
+  const onkeydown = (e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s" && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      const ft = ctx.focusedTab.get();
+      if (ft) {
+        ctx.saveFile(ft);
+      }
+    }
+  };
+
   shadowRoot.append(
-    <div class={minicodeStyles} style={ctx.theme.derive((t) => themeToCssVars(t))}>
+    <div
+      class={minicodeStyles}
+      style={ctx.theme.derive((t) => themeToCssVars(t))}
+      onkeydown={onkeydown}
+    >
       <style>{stylesheet}</style>
       {ready.derive((ready) =>
         ready ? (
           <>
-            <FileTree ctx={ctx} />
-            <Tabs ctx={ctx} />
+            <TopBar ctx={ctx} />
+            <div class="minicode-editor">
+              <FileTree ctx={ctx} />
+              <div class="main-panel">
+                <Tabs ctx={ctx} />
+                <TerminalPanel ctx={ctx} />
+              </div>
+            </div>
           </>
         ) : (
           <div class="loader">

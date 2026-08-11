@@ -3,6 +3,8 @@ import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import type { ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { File } from "../../files";
+import { Path } from "../../utils/path";
+import { ContextMenu, type MenuItem } from "../context-menu/context-menu";
 
 const MIN_WIDTH = 150;
 const DEFAULT_WIDTH = 360;
@@ -115,8 +117,101 @@ const FileTreeStyles = css`
   }
 `;
 
+type ContextMenuState = {
+  items: MenuItem[];
+  x: number;
+  y: number;
+};
+
+type Clipboard = { path: string; cut: boolean };
+
 export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
   const width = sig(DEFAULT_WIDTH);
+  const contextMenu = sig<ContextMenuState | null>(null);
+  const clipboard = sig<Clipboard | null>(null);
+
+  const buildMenuItems = (targetPath: string | null, isDir: boolean): MenuItem[] => {
+    const items: MenuItem[] = [];
+    const dirPath = targetPath
+      ? isDir
+        ? targetPath
+        : Path.from(targetPath).dir().toString()
+      : ctx.root.path;
+
+    items.push({ label: "New File", action: () => newFile(dirPath) });
+    items.push({ label: "New Folder", action: () => newFolder(dirPath) });
+
+    if (targetPath) {
+      items.push({ separator: true });
+      items.push({
+        label: "Cut",
+        action: () => clipboard.dispatch({ path: targetPath, cut: true }),
+      });
+      items.push({
+        label: "Copy",
+        action: () => clipboard.dispatch({ path: targetPath, cut: false }),
+      });
+    }
+
+    if (clipboard.get()) {
+      items.push({ separator: true });
+      items.push({
+        label: "Paste",
+        action: () => {
+          const cb = clipboard.get()!;
+          if (cb.cut) {
+            ctx.movePathTo(cb.path, dirPath);
+            clipboard.dispatch(null);
+          } else {
+            ctx.copyPathTo(cb.path, dirPath);
+          }
+        },
+      });
+    }
+
+    if (targetPath) {
+      items.push({ separator: true });
+      items.push({
+        label: "Rename",
+        action: () => {
+          const newName = prompt("Enter new name:", Path.from(targetPath).basename());
+          if (newName && newName !== Path.from(targetPath).basename()) {
+            ctx.renamePath(targetPath, newName);
+          }
+        },
+      });
+      items.push({
+        label: "Delete",
+        action: () => {
+          if (confirm(`Delete "${Path.from(targetPath).basename()}"?`)) {
+            ctx.deletePath(targetPath);
+          }
+        },
+      });
+    }
+
+    return items;
+  };
+
+  const newFile = (dirPath: string) => {
+    const name = prompt("Enter file name:");
+    if (name) ctx.createFile(dirPath, name);
+  };
+
+  const newFolder = (dirPath: string) => {
+    const name = prompt("Enter folder name:");
+    if (name) ctx.createDirectory(dirPath, name);
+  };
+
+  const openContextMenu = (e: MouseEvent, targetPath: string | null, isDir: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+    contextMenu.dispatch({
+      items: buildMenuItems(targetPath, isDir),
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
 
   const onPointerDown = (e: PointerEvent) => {
     e.preventDefault();
@@ -142,15 +237,24 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
 
   return (
     <div class={FileTreeStyles} style={{ width: width, display: "flex", flexDirection: "row" }}>
-      <div class="file-tree">
+      <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, null, false)}>
         {ctx.root.files().$map((f) => {
           return (
             <div>
               {f.derive((f) => {
                 if (f.isDir) {
-                  return <FileTreeDirectory ctx={ctx} dir={f} level={0} />;
+                  return (
+                    <FileTreeDirectory
+                      ctx={ctx}
+                      dir={f}
+                      level={0}
+                      onContextMenu={openContextMenu}
+                    />
+                  );
                 } else {
-                  return <FileTreeFile ctx={ctx} file={f} level={0} />;
+                  return (
+                    <FileTreeFile ctx={ctx} file={f} level={0} onContextMenu={openContextMenu} />
+                  );
                 }
               })}
             </div>
@@ -158,12 +262,29 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
         })}
       </div>
       <div class="resizer" onpointerdown={onPointerDown}></div>
+      {contextMenu.derive((menu) =>
+        menu ? (
+          <ContextMenu
+            items={menu.items}
+            x={menu.x}
+            y={menu.y}
+            onClose={() => contextMenu.dispatch(null)}
+          />
+        ) : null,
+      )}
     </div>
   );
 }
 
-function FileTreeDirectory(props: { ctx: MiniCodeContext; dir: File; level?: number }) {
-  const { ctx, dir, level = 0 } = props;
+type ContextMenuHandler = (e: MouseEvent, targetPath: string | null, isDir: boolean) => void;
+
+function FileTreeDirectory(props: {
+  ctx: MiniCodeContext;
+  dir: File;
+  level?: number;
+  onContextMenu: ContextMenuHandler;
+}) {
+  const { ctx, dir, level = 0, onContextMenu } = props;
   const expanded = dir.expanded;
 
   const toggle = () => expanded.dispatch((e) => !e);
@@ -175,6 +296,7 @@ function FileTreeDirectory(props: { ctx: MiniCodeContext; dir: File; level?: num
         class={{ row: true, dir: true, expanded }}
         style={{ "--level": level }}
         onclick={toggle}
+        oncontextmenu={(e: MouseEvent) => onContextMenu(e, dir.path, true)}
       >
         <span class="chevron">
           <ChevronIcon />
@@ -190,9 +312,23 @@ function FileTreeDirectory(props: { ctx: MiniCodeContext; dir: File; level?: num
             <div>
               {f.derive((f) => {
                 if (f.isDir) {
-                  return <FileTreeDirectory ctx={ctx} dir={f} level={level + 1} />;
+                  return (
+                    <FileTreeDirectory
+                      ctx={ctx}
+                      dir={f}
+                      level={level + 1}
+                      onContextMenu={onContextMenu}
+                    />
+                  );
                 } else {
-                  return <FileTreeFile ctx={ctx} file={f} level={level + 1} />;
+                  return (
+                    <FileTreeFile
+                      ctx={ctx}
+                      file={f}
+                      level={level + 1}
+                      onContextMenu={onContextMenu}
+                    />
+                  );
                 }
               })}
             </div>
@@ -203,8 +339,13 @@ function FileTreeDirectory(props: { ctx: MiniCodeContext; dir: File; level?: num
   );
 }
 
-function FileTreeFile(props: { ctx: MiniCodeContext; file: File; level?: number }) {
-  const { ctx, file, level = 0 } = props;
+function FileTreeFile(props: {
+  ctx: MiniCodeContext;
+  file: File;
+  level?: number;
+  onContextMenu: ContextMenuHandler;
+}) {
+  const { ctx, file, level = 0, onContextMenu } = props;
   const active = ctx.focusedTab.derive((ft) => !!ft && ft.eq(file));
 
   return (
@@ -213,6 +354,7 @@ function FileTreeFile(props: { ctx: MiniCodeContext; file: File; level?: number 
       class={{ row: true, active }}
       style={{ "--level": level }}
       onclick={() => ctx.openFile(file)}
+      oncontextmenu={(e: MouseEvent) => onContextMenu(e, file.path, false)}
     >
       <span class="icon">
         <FileIcon ctx={ctx} ext={file.ext} />
@@ -222,76 +364,72 @@ function FileTreeFile(props: { ctx: MiniCodeContext; file: File; level?: number 
   );
 }
 
-const SVG_NS = "http://www.w3.org/2000/svg";
-
-function svg(size: number, viewBox: string, children: SVGElement[] | SVGElement): SVGSVGElement {
-  const el = document.createElementNS(SVG_NS, "svg");
-  el.setAttribute("width", String(size));
-  el.setAttribute("height", String(size));
-  el.setAttribute("viewBox", viewBox);
-  el.setAttribute("fill", "none");
-  if (Array.isArray(children)) {
-    for (const c of children) el.appendChild(c);
-  } else {
-    el.appendChild(children);
-  }
-  return el;
-}
-
-function path(d: string, attrs: Record<string, string>): SVGPathElement {
-  const el = document.createElementNS(SVG_NS, "path");
-  el.setAttribute("d", d);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-  return el;
-}
-
-function circle(cx: number, cy: number, r: number, fill: string): SVGCircleElement {
-  const el = document.createElementNS(SVG_NS, "circle");
-  el.setAttribute("cx", String(cx));
-  el.setAttribute("cy", String(cy));
-  el.setAttribute("r", String(r));
-  el.setAttribute("fill", fill);
-  return el;
-}
-
 function ChevronIcon() {
-  return svg(
-    12,
-    "0 0 16 16",
-    path("M6 4l4 4-4 4", {
-      stroke: "currentColor",
-      "stroke-width": "1.5",
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-    }),
+  return (
+    <svg
+      attribute:width={12}
+      attribute:height="12"
+      attribute:viewBox="0 0 16 16"
+      attribute:fill="none"
+    >
+      <path
+        attribute:d="M6 4l4 4-4 4"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+        attribute:stroke-linejoin="round"
+      />
+    </svg>
   );
 }
 
 function DirIcon(props: { expanded: ReadonlySignal<boolean> }) {
-  const p = path("M1.5 4.5h4l1.2 1.5h7.8v7.5a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1v-8z", {
-    stroke: "currentColor",
-    "stroke-width": "1.2",
-    "stroke-linejoin": "round",
-  });
-  props.expanded.observe((e) => p.setAttribute("fill", e ? "currentColor" : "none"));
-  return svg(14, "0 0 16 16", p);
+  return (
+    <svg
+      attribute:width="14"
+      attribute:height="14"
+      attribute:viewBox="0 0 16 16"
+      attribute:fill="none"
+    >
+      <path
+        attribute:d="M1.5 4.5h4l1.2 1.5h7.8v7.5a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1v-8z"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.2"
+        attribute:stroke-linejoin="round"
+        attribute:fill={props.expanded.derive((e) => (e ? "currentColor" : "none"))}
+      />
+    </svg>
+  );
 }
 
 function FileIcon(props: { ctx: MiniCodeContext; ext?: string }) {
-  const color = extColor(props.ext, props.ctx.theme.get().fileTypeColors);
-  return svg(14, "0 0 16 16", [
-    path("M3.5 1.5h6L13 5v9.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5z", {
-      stroke: "currentColor",
-      "stroke-width": "1.2",
-      "stroke-linejoin": "round",
-    }),
-    path("M9 1.5V5h4", {
-      stroke: "currentColor",
-      "stroke-width": "1.2",
-      "stroke-linejoin": "round",
-    }),
-    circle(11, 11, 2.5, color),
-  ]);
+  return (
+    <svg
+      attribute:width="14"
+      attribute:height="14"
+      attribute:viewBox="0 0 16 16"
+      attribute:fill="none"
+    >
+      <path
+        attribute:d="M3.5 1.5h6L13 5v9.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5z"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.2"
+        attribute:stroke-linejoin="round"
+      />
+      <path
+        attribute:d="M9 1.5V5h4"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.2"
+        attribute:stroke-linejoin="round"
+      />
+      <circle
+        attribute:cx="11"
+        attribute:cy="11"
+        attribute:r="2.5"
+        attribute:fill={props.ctx.theme.derive((t) => extColor(props.ext, t.fileTypeColors))}
+      />
+    </svg>
+  );
 }
 
 const DEFAULT_EXT_COLORS: Record<string, string> = {

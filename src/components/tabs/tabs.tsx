@@ -5,20 +5,22 @@ import { Range } from "@ncpa0cpl/vanilla-jsx";
 import { defineCodeMirrorTheme } from "../../themes";
 const List = Range;
 
-const SVG_NS = "http://www.w3.org/2000/svg";
-
-function closeIcon(): SVGSVGElement {
-  const el = document.createElementNS(SVG_NS, "svg");
-  el.setAttribute("width", "10");
-  el.setAttribute("height", "10");
-  el.setAttribute("viewBox", "0 0 16 16");
-  const p = document.createElementNS(SVG_NS, "path");
-  p.setAttribute("d", "M4 4l8 8M12 4l-8 8");
-  p.setAttribute("stroke", "currentColor");
-  p.setAttribute("stroke-width", "1.5");
-  p.setAttribute("stroke-linecap", "round");
-  el.appendChild(p);
-  return el;
+function closeIcon() {
+  return (
+    <svg
+      attribute:width="10"
+      attribute:height="10"
+      attribute:viewBox="0 0 16 16"
+      attribute:fill="none"
+    >
+      <path
+        attribute:d="M4 4l8 8M12 4l-8 8"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+      />
+    </svg>
+  );
 }
 
 const TabsStyles = css`
@@ -76,7 +78,12 @@ const TabsStyles = css`
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: var(--minicode-muted, #6b7280);
+        background: var(--minicode-accent, #4b9fff);
+        visibility: hidden;
+      }
+
+      & .tab-dot.dirty {
+        visibility: visible;
       }
     }
 
@@ -106,10 +113,6 @@ const TabsStyles = css`
       background: var(--minicode-editor-bg, #1b1f27);
       border-bottom: 2px solid var(--minicode-accent, #4b9fff);
       padding-bottom: 5px;
-    }
-
-    &.active .tab-dot {
-      background: var(--minicode-accent, #4b9fff);
     }
 
     &.active .tab-close {
@@ -159,24 +162,48 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
     </div>
   );
 
+  const tabBar = (
+    <div class="tab-bar">
+      {ctx.opendTabs.$map((t) => {
+        const active = ctx.focusedTab.derive((ft) => !!ft && ft.eq(t.file));
+        return (
+          <div
+            class={{ "tab-btn": true, active }}
+            onmousedown={(e: MouseEvent) => {
+              if (e.button === 1) e.preventDefault();
+            }}
+            onauxclick={(e: MouseEvent) => {
+              if (e.button === 1) {
+                e.preventDefault();
+                ctx.closeTab(t.file);
+              }
+            }}
+          >
+            <button class="tab-name" onclick={() => ctx.focusTab(t.file)}>
+              <span class={{ "tab-dot": true, dirty: t.dirty }}></span>
+              <span class="tab-label">{t.file.name}</span>
+            </button>
+            <button class="tab-close" onclick={() => ctx.closeTab(t.file)}>
+              {closeIcon()}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  ctx.focusedTab.observe(() => {
+    requestAnimationFrame(() => {
+      const el = tabBar.querySelector(".tab-btn.active");
+      if (el) {
+        el.scrollIntoView({ inline: "nearest", block: "nearest" });
+      }
+    });
+  });
+
   return (
     <div class={TabsStyles}>
-      <div class="tab-bar">
-        {ctx.opendTabs.$map((t) => {
-          const active = ctx.focusedTab.derive((ft) => !!ft && ft.eq(t.file));
-          return (
-            <div class={{ "tab-btn": true, active }}>
-              <button class="tab-name" onclick={() => ctx.focusTab(t.file)}>
-                <span class="tab-dot"></span>
-                <span class="tab-label">{t.file.name}</span>
-              </button>
-              <button class="tab-close" onclick={() => ctx.closeTab(t.file)}>
-                {closeIcon()}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+      {tabBar}
       <List data={ctx.opendTabs} into={tabEditor}>
         {(t: TabData) => {
           t.view ??= new EditorView({
@@ -184,8 +211,13 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
             root: ctx.shadowRoot,
             extensions: [
               basicSetup,
+              EditorView.updateListener.of((u) => {
+                if (u.docChanged) {
+                  t.dirty.dispatch(u.state.doc.toString() !== t.savedContent);
+                }
+              }),
               ...ctx.getLanguageExtensions(t.file),
-              ...ctx.getLspExtensions(t.file),
+              ctx.lspCompartment.of(ctx.getLspExtensions(t.file)),
               ctx.syntaxCompartment.of(ctx.getSyntaxExtension()),
               ctx.themeCompartment.of(defineCodeMirrorTheme(ctx.theme.get())),
             ],

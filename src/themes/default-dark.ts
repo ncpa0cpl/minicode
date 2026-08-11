@@ -2,8 +2,8 @@ import type { Theme } from "./index";
 import { darkSyntaxStyle } from "./syntax";
 
 export const darkTheme: Theme = {
-  name: "dark",
-  dark: true,
+  name: "Default Dark",
+  variant: "light",
 
   bg: "#1b1f27",
   fg: "#cdd3de",

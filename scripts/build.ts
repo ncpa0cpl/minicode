@@ -12,6 +12,8 @@ async function main() {
   const stylesheetCJS = new StylesheetFile(p("dist/cjs/styles.cjs"), "cjs");
   const stylesheetMJS = new StylesheetFile(p("dist/esm/styles.mjs"), "mjs");
 
+  await generateXtermCss();
+
   await build({
     formats: ["cjs", "esm", "legacy"],
     outDir: p("dist"),
@@ -21,7 +23,7 @@ async function main() {
     tsConfig: p("tsconfig.json"),
     esbuildOptions: {
       jsxImportSource: "@ncpa0cpl/vanilla-jsx",
-      external: ["codemirror", "@codemirror/*", "style-mod"],
+      external: ["codemirror", "@codemirror/*", "style-mod", "@xterm/xterm", "@xterm/addon-fit"],
       plugins: [
         EmbedCssPlugin({
           write: false,
@@ -43,6 +45,18 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
+
+async function generateXtermCss() {
+  const cssPath = p("node_modules/@xterm/xterm/css/xterm.css");
+  const css = await fs.promises.readFile(cssPath, "utf-8");
+  const outDir = p("src/terminal");
+  await fs.promises.mkdir(outDir, { recursive: true });
+  await fs.promises.writeFile(
+    p("src/terminal/xterm-css.ts"),
+    `// generated from @xterm/xterm/css/xterm.css — do not edit\nexport const xtermCss = ${JSON.stringify(css)};\n`,
+    "utf-8",
+  );
+}
 
 class StylesheetFile {
   styles: Array<string> = [];

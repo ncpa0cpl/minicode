@@ -2,8 +2,8 @@ import type { Theme } from "./index";
 import { lightSyntaxStyle } from "./syntax";
 
 export const lightTheme: Theme = {
-  name: "light",
-  dark: false,
+  name: "Default Light",
+  variant: "light",
 
   bg: "#ffffff",
   fg: "#333333",
