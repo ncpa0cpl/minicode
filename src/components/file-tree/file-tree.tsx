@@ -4,6 +4,7 @@ import { File } from "../../files";
 import { ContextMenu } from "../context-menu/context-menu";
 import { useFileContextMenu } from "./context-menut";
 import { ChevronIcon, DirIcon, FileIcon } from "./icons";
+import { PromptModal } from "../prompt-modal/prompt-modal";
 
 const MIN_WIDTH = 150;
 
@@ -118,7 +119,7 @@ const FileTreeStyles = css`
 export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
   const width = ctx.fileTreeWidth;
 
-  const { contextMenu, openContextMenu } = useFileContextMenu(ctx);
+  const { contextMenu, promptState, closePrompt, openContextMenu } = useFileContextMenu(ctx);
 
   const onPointerDown = (e: PointerEvent) => {
     e.preventDefault();
@@ -176,6 +177,16 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
             x={menu.x}
             y={menu.y}
             onClose={() => contextMenu.dispatch(null)}
+          />
+        ) : null,
+      )}
+      {promptState.derive((p) =>
+        p ? (
+          <PromptModal
+            title={p.title}
+            defaultValue={p.defaultValue}
+            onConfirm={(v) => closePrompt(v)}
+            onCancel={() => closePrompt(null)}
           />
         ) : null,
       )}

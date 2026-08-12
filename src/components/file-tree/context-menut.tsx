@@ -1,4 +1,4 @@
-import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
+import { sig, type Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { MenuItem } from "../context-menu/context-menu";
 import { Path } from "../../utils/path";
@@ -11,9 +11,30 @@ type ContextMenuState = {
 
 type Clipboard = { path: string; cut: boolean };
 
+type PromptState = {
+  title: string;
+  defaultValue: string;
+  resolve: (value: string | null) => void;
+};
+
 export function useFileContextMenu(ctx: MiniCodeContext) {
   const contextMenu = sig<ContextMenuState | null>(null);
   const clipboard = sig<Clipboard | null>(null);
+  const promptState = sig<PromptState | null>(null);
+
+  const openPrompt = (title: string, defaultValue = ""): Promise<string | null> => {
+    return new Promise((resolve) => {
+      promptState.dispatch({ title, defaultValue, resolve });
+    });
+  };
+
+  const closePrompt = (value: string | null) => {
+    const state = promptState.get();
+    if (state) {
+      state.resolve(value);
+      promptState.dispatch(null);
+    }
+  };
 
   const buildMenuItems = (targetPath: string | null, isDir: boolean): MenuItem[] => {
     const items: MenuItem[] = [];
@@ -58,9 +79,10 @@ export function useFileContextMenu(ctx: MiniCodeContext) {
       items.push({ separator: true });
       items.push({
         label: "Rename",
-        action: () => {
-          const newName = prompt("Enter new name:", Path.from(targetPath).basename());
-          if (newName && newName !== Path.from(targetPath).basename()) {
+        action: async () => {
+          const oldName = Path.from(targetPath).basename();
+          const newName = await openPrompt("Enter new name:", oldName);
+          if (newName && newName !== oldName) {
             ctx.renamePath(targetPath, newName);
           }
         },
@@ -78,13 +100,13 @@ export function useFileContextMenu(ctx: MiniCodeContext) {
     return items;
   };
 
-  const newFile = (dirPath: string) => {
-    const name = prompt("Enter file name:");
+  const newFile = async (dirPath: string) => {
+    const name = await openPrompt("Enter file name:");
     if (name) ctx.createFile(dirPath, name);
   };
 
-  const newFolder = (dirPath: string) => {
-    const name = prompt("Enter folder name:");
+  const newFolder = async (dirPath: string) => {
+    const name = await openPrompt("Enter folder name:");
     if (name) ctx.createDirectory(dirPath, name);
   };
 
@@ -100,9 +122,14 @@ export function useFileContextMenu(ctx: MiniCodeContext) {
 
   return {
     contextMenu,
+    promptState,
+    closePrompt,
     buildMenuItems,
     newFile,
     newFolder,
     openContextMenu,
   };
 }
+
+export type FileContextMenuApi = ReturnType<typeof useFileContextMenu>;
+export type PromptStateSignal = Signal<PromptState | null>;
