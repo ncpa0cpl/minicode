@@ -1,4 +1,5 @@
 import { sig, type Signal } from "@ncpa0cpl/vanilla-jsx/signals";
+import { Compartment } from "@codemirror/state";
 import { File } from "./files";
 import { Filesystem, MiniCodeOptions, type Dirent, type Storage } from "./mini-code";
 import { Path } from "./utils/path";
@@ -21,6 +22,7 @@ export class MiniCodeContext {
   abort = new AbortController();
   shadowRoot!: ShadowRoot;
   private languages: LanguagesConfig | undefined;
+  private languageCompartment = new Compartment();
   private dirIndex = new Map<string, File>();
   fileTreeWidth: Signal<number>;
   storage: Storage;
@@ -50,6 +52,14 @@ export class MiniCodeContext {
 
   getLanguageExtensions(file: File) {
     return resolveLanguageExtension(this.languages, file.ext);
+  }
+
+  cmLanguageExtensions(file: File) {
+    return [this.languageCompartment.of(this.getLanguageExtensions(file))];
+  }
+
+  cmLanguageReconfigure(file: File) {
+    return this.languageCompartment.reconfigure(this.getLanguageExtensions(file));
   }
 
   async load() {

@@ -216,7 +216,7 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
                   t.dirty.dispatch(u.state.doc.toString() !== t.savedContent);
                 }
               }),
-              ...ctx.getLanguageExtensions(t.file),
+              ...ctx.cmLanguageExtensions(t.file),
               ...ctx.lsp.cmExtensions(t.file),
               ...ctx.themes.cmExtensions(),
             ],
