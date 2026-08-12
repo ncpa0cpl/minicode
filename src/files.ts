@@ -56,6 +56,13 @@ export class File {
     return this._expanded;
   }
 
+  replaceFiles(files: Signal<File>[]) {
+    if (!this.isDirectory) {
+      throw new Error(`File.files(): ${this.name} is not a directory`);
+    }
+    this.children!.dispatch(files.sort((a, b) => sortFiles(a.get(), b.get())));
+  }
+
   files() {
     if (!this.isDirectory) {
       throw new Error(`File.files(): ${this.name} is not a directory`);

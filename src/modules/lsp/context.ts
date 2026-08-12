@@ -21,7 +21,7 @@ export class LspContext {
     return createLspExtensions(this.lspManager, file);
   }
 
-  effect(file: File) {
+  cmReconfigure(file: File) {
     return this.lspCompartment.reconfigure(this.getLspExtensions(file));
   }
 

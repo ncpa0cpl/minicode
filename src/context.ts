@@ -107,7 +107,8 @@ export class MiniCodeContext {
     let entries: Dirent[];
     try {
       entries = await this.filesystem.readdir(dirPath, { withFileTypes: true });
-    } catch {
+    } catch (err) {
+      console.error(err);
       return;
     }
 
@@ -153,7 +154,7 @@ export class MiniCodeContext {
       }
     }
 
-    dir.files().dispatch(newChildren);
+    dir.replaceFiles(newChildren);
   }
 
   async createFile(dirPath: string, name: string) {

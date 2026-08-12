@@ -120,7 +120,7 @@ export class TabsContext {
 
       if (oldFile.ext !== newFile.ext) {
         tabs[idx]!.view?.dispatch({
-          effects: this.minicode.lsp.effect(newFile),
+          effects: [this.minicode.lsp.cmReconfigure(newFile)],
         });
       }
 
