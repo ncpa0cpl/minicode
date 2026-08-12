@@ -212,7 +212,7 @@ export class MiniCodeContext {
     const newPath = Path.from(oldPath).dir().join(newName).toString();
     await this.filesystem.rename(oldPath, newPath);
 
-    this.tabs.renameTab(oldPath, oldFile.rename(newName));
+    this.tabs.renameTab(oldPath, oldFile.rename(newPath));
     await this.refreshDir(Path.from(oldPath).dir().toString());
   }
 

@@ -189,22 +189,18 @@ export class TabsContext {
         return tabs;
       }
 
-      const oldFile = tabs[idx]!.file;
-
       tabs = tabs.slice();
       tabs[idx] = {
         ...tabs[idx]!,
         file: newFile,
       };
 
-      if (oldFile.ext !== newFile.ext) {
-        tabs[idx]!.view?.dispatch({
-          effects: [
-            this.minicode.cmLanguageReconfigure(newFile),
-            this.minicode.lsp.cmReconfigure(newFile),
-          ],
-        });
-      }
+      tabs[idx]!.view?.dispatch({
+        effects: [
+          this.minicode.cmLanguageReconfigure(newFile),
+          this.minicode.lsp.cmReconfigure(newFile),
+        ],
+      });
 
       return tabs;
     });
