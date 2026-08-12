@@ -12,9 +12,9 @@ export class LspContext {
 
   constructor(
     private readonly minicode: MiniCodeContext,
-    private opts: MiniCodeOptions,
+    opts: MiniCodeOptions,
   ) {
-    this.lspManager = new LspManager(opts.lsp ?? {}, toUri(opts.root));
+    this.lspManager = new LspManager(opts.lsp ?? {}, toUri(opts.root), minicode.logs);
   }
 
   getLspExtensions(file: File) {

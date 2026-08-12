@@ -1,6 +1,7 @@
 import { css } from "embedcss";
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
+import { LogViewer } from "../log-viewer/log-viewer";
 
 const TopBarStyles = css`
   .top-bar {
@@ -29,6 +30,7 @@ const TopBarStyles = css`
     cursor: pointer;
     outline: none;
     border-radius: 4px;
+    position: relative;
 
     &:hover {
       color: var(--minicode-fg, #cdd3de);
@@ -39,6 +41,28 @@ const TopBarStyles = css`
       opacity: 0.4;
       cursor: default;
       pointer-events: none;
+    }
+
+    & .log-badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      min-width: 14px;
+      height: 14px;
+      padding: 0 3px;
+      box-sizing: border-box;
+      border-radius: 7px;
+      background: #e06c75;
+      color: #ffffff;
+      font-size: 9px;
+      line-height: 14px;
+      text-align: center;
+      pointer-events: none;
+      display: none;
+    }
+
+    & .log-badge.has-count {
+      display: block;
     }
   }
 
@@ -160,8 +184,47 @@ function checkIcon() {
   );
 }
 
+function logIcon() {
+  return (
+    <svg
+      attribute:width="16"
+      attribute:height="16"
+      attribute:viewBox="0 0 16 16"
+      attribute:fill="none"
+    >
+      <path
+        attribute:d="M2 3.5h12v7H6l-3 3v-3H2z"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linejoin="round"
+      />
+      <line
+        attribute:x1="5"
+        attribute:y1="6"
+        attribute:x2="11"
+        attribute:y2="6"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+      />
+      <line
+        attribute:x1="5"
+        attribute:y1="8.5"
+        attribute:x2="9"
+        attribute:y2="8.5"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+      />
+    </svg>
+  );
+}
+
 export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
   const themeMenuOpen = sig(false);
+  const logViewerOpen = sig(false);
+
+  const errorCount = ctx.logs.logs.derive((logs) => logs.filter((l) => l.level === "error").length);
 
   const closeMenu = (e: Event) => {
     const target = e.target as Node;
@@ -176,6 +239,12 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
   return (
     <div class={TopBarStyles}>
       <div class="top-bar" onclick={closeMenu}>
+        <button class="icon-btn" title="Logs" onclick={() => logViewerOpen.dispatch((v) => !v)}>
+          {logIcon()}
+          <span class={{ "log-badge": true, "has-count": errorCount.derive((c) => c > 0) }}>
+            {errorCount.derive((c) => (c > 99 ? "99+" : String(c)))}
+          </span>
+        </button>
         <div class="theme-dropdown">
           <button class="icon-btn" onclick={() => themeMenuOpen.dispatch((v) => !v)}>
             {themeIcon()}
@@ -214,6 +283,9 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
           {terminalIcon()}
         </button>
       </div>
+      {logViewerOpen.derive((open) =>
+        open ? <LogViewer ctx={ctx} onClose={() => logViewerOpen.dispatch(false)} /> : null,
+      )}
     </div>
   );
 }

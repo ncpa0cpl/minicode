@@ -8,6 +8,7 @@ import { TerminalsContext } from "./modules/terminal/terminals";
 import { TabsContext } from "./modules/tabs/tabs";
 import { LspContext } from "./modules/lsp/context";
 import { ThemesContext } from "./modules/theme/theme";
+import { LogContext } from "./modules/log/log";
 
 export class MiniCodeContext {
   static storageKeys = {
@@ -30,12 +31,14 @@ export class MiniCodeContext {
   themes: ThemesContext;
   tabs: TabsContext;
   lsp: LspContext;
+  logs: LogContext;
 
   constructor(private opts: MiniCodeOptions) {
     this.filesystem = opts.filesystem;
     this.languages = opts.languages;
     this.storage = opts.storage ?? localStorage;
 
+    this.logs = new LogContext(this, opts);
     this.terminals = new TerminalsContext(this, opts);
     this.tabs = new TabsContext(this, opts);
     this.lsp = new LspContext(this, opts);
@@ -87,7 +90,7 @@ export class MiniCodeContext {
         if (Error.isError(err) && err.name === "AbortError") {
           return;
         }
-        console.error(err);
+        this.logs.error("Filesystem watch error", err);
       }
     })();
   }
@@ -118,7 +121,7 @@ export class MiniCodeContext {
     try {
       entries = await this.filesystem.readdir(dirPath, { withFileTypes: true });
     } catch (err) {
-      console.error(err);
+      this.logs.error(`Failed to read directory "${dirPath}"`, err);
       return;
     }
 
@@ -168,15 +171,23 @@ export class MiniCodeContext {
   }
 
   async createFile(dirPath: string, name: string) {
-    const filePath = Path.from(dirPath).join(name).toString();
-    await this.filesystem.writeFile(filePath, "");
-    await this.refreshDir(dirPath);
+    try {
+      const filePath = Path.from(dirPath).join(name).toString();
+      await this.filesystem.writeFile(filePath, "");
+      await this.refreshDir(dirPath);
+    } catch (err) {
+      this.logs.error(`Failed to create file "${name}"`, err);
+    }
   }
 
   async createDirectory(dirPath: string, name: string) {
-    const dirPathFull = Path.from(dirPath).join(name).toString();
-    await this.filesystem.mkdir(dirPathFull);
-    await this.refreshDir(dirPath);
+    try {
+      const dirPathFull = Path.from(dirPath).join(name).toString();
+      await this.filesystem.mkdir(dirPathFull);
+      await this.refreshDir(dirPath);
+    } catch (err) {
+      this.logs.error(`Failed to create directory "${name}"`, err);
+    }
   }
 
   private findFile(path: string | Path) {
@@ -206,67 +217,84 @@ export class MiniCodeContext {
   }
 
   async renamePath(oldPath: string, newName: string) {
-    const oldFile = this.findFile(oldPath);
-    if (!oldFile) return;
+    try {
+      const oldFile = this.findFile(oldPath);
+      if (!oldFile) return;
 
-    const newPath = Path.from(oldPath).dir().join(newName).toString();
-    await this.filesystem.rename(oldPath, newPath);
+      const newPath = Path.from(oldPath).dir().join(newName).toString();
+      await this.filesystem.rename(oldPath, newPath);
 
-    this.tabs.renameTab(oldPath, oldFile.rename(newPath));
-    await this.refreshDir(Path.from(oldPath).dir().toString());
+      this.tabs.renameTab(oldPath, oldFile.rename(newPath));
+      await this.refreshDir(Path.from(oldPath).dir().toString());
+    } catch (err) {
+      this.logs.error(`Failed to rename "${oldPath}" -> "${newName}"`, err);
+    }
   }
 
   async deletePath(path: string) {
-    const oldFile = this.findFile(path);
-    if (!oldFile) return;
+    try {
+      const oldFile = this.findFile(path);
+      if (!oldFile) return;
 
-    const isDir = oldFile.isDir;
-    await this.filesystem.rm(path, { recursive: isDir, force: true });
-    this.tabs.close(oldFile);
-    await this.refreshDir(Path.from(path).dir().toString());
+      const isDir = oldFile.isDir;
+      await this.filesystem.rm(path, { recursive: isDir, force: true });
+      this.tabs.close(oldFile);
+      await this.refreshDir(Path.from(path).dir().toString());
+    } catch (err) {
+      this.logs.error(`Failed to delete "${path}"`, err);
+    }
   }
 
   async copyPathTo(srcPath: string, destDir: string) {
-    const oldFile = this.findFile(srcPath);
-    if (!oldFile) return;
+    try {
+      const oldFile = this.findFile(srcPath);
+      if (!oldFile) return;
 
-    const name = oldFile.name;
-    const destPath = Path.from(destDir).join(name).toString();
-    let finalDest = destPath;
-    let i = 1;
-    while (true) {
-      try {
-        await this.filesystem.readdir(Path.from(finalDest).dir().toString());
-        const entries = await this.filesystem.readdir(Path.from(finalDest).dir().toString(), {
-          withFileTypes: true,
-        });
-        if (!entries.some((e) => e.name === Path.from(finalDest).basename())) {
+      const name = oldFile.name;
+      const destPath = Path.from(destDir).join(name).toString();
+      let finalDest = destPath;
+      let i = 1;
+      while (true) {
+        try {
+          await this.filesystem.readdir(Path.from(finalDest).dir().toString());
+          const entries = await this.filesystem.readdir(Path.from(finalDest).dir().toString(), {
+            withFileTypes: true,
+          });
+          if (!entries.some((e) => e.name === Path.from(finalDest).basename())) {
+            break;
+          }
+        } catch (err) {
+          this.logs.debug("copyPathTo destination check failed", err);
           break;
         }
-      } catch {
-        break;
+        const baseName = Path.from(destPath).basename(false);
+        const ext = Path.from(destPath).ext();
+        const suffix = ext ? `.${ext}` : "";
+        finalDest = Path.from(destDir).join(`${baseName} ${i}${suffix}`).toString();
+        i++;
       }
-      const baseName = Path.from(destPath).basename(false);
-      const ext = Path.from(destPath).ext();
-      const suffix = ext ? `.${ext}` : "";
-      finalDest = Path.from(destDir).join(`${baseName} ${i}${suffix}`).toString();
-      i++;
+      await this.filesystem.copyFile(srcPath, finalDest);
+      await this.refreshDir(destDir);
+    } catch (err) {
+      this.logs.error(`Failed to copy "${srcPath}" to "${destDir}"`, err);
     }
-    await this.filesystem.copyFile(srcPath, finalDest);
-    await this.refreshDir(destDir);
   }
 
   async movePathTo(srcPath: string, destDir: string) {
-    const oldFile = this.findFile(srcPath);
-    if (!oldFile) return;
+    try {
+      const oldFile = this.findFile(srcPath);
+      if (!oldFile) return;
 
-    const name = oldFile.name;
-    const destPath = Path.from(destDir).join(name).toString();
-    await this.filesystem.rename(srcPath, destPath);
+      const name = oldFile.name;
+      const destPath = Path.from(destDir).join(name).toString();
+      await this.filesystem.rename(srcPath, destPath);
 
-    this.tabs.renameTab(srcPath, oldFile.rename(destPath));
+      this.tabs.renameTab(srcPath, oldFile.rename(destPath));
 
-    await this.refreshDir(destDir);
-    await this.refreshDir(Path.from(srcPath).dir().toString());
+      await this.refreshDir(destDir);
+      await this.refreshDir(Path.from(srcPath).dir().toString());
+    } catch (err) {
+      this.logs.error(`Failed to move "${srcPath}" to "${destDir}"`, err);
+    }
   }
 }

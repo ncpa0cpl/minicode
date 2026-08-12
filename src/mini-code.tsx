@@ -155,9 +155,15 @@ export function MiniCode(opts: MiniCodeOptions) {
 
   const ready = sig(false);
 
-  ctx.load().then(() => {
-    ready.dispatch(true);
-  });
+  ctx
+    .load()
+    .then(() => {
+      ready.dispatch(true);
+    })
+    .catch((err) => {
+      ctx.logs.error("Failed to load workspace", err);
+      ready.dispatch(true);
+    });
 
   const shadowRootHost = <div class="minicode-shadow-root"></div>;
   const shadowRoot = shadowRootHost.attachShadow({ mode: "closed" });

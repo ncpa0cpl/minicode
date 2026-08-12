@@ -17,6 +17,7 @@ import type {
   PublishDiagnosticsParams,
 } from "./types";
 import { toUri as toUriFn } from "./types";
+import type { LogContext } from "../log/log";
 
 interface OpenDoc {
   version: number;
@@ -39,6 +40,7 @@ export class LspManager {
   constructor(
     private factories: LspFactoryConfig,
     private rootUri: string,
+    private logs?: LogContext,
   ) {}
 
   hasLsp(ext: string | undefined): boolean {
@@ -58,14 +60,14 @@ export class LspManager {
     entries = factoryList.map((f) => {
       const transport = f({ rootUri: this.rootUri });
       const client = new LspClient(transport);
-      const initialized = this.initializeClient(client);
+      const initialized = this.initializeClient(client, ext);
       return { client, initialized };
     });
     this.clients.set(key, entries);
     return entries;
   }
 
-  private async initializeClient(client: LspClient): Promise<void> {
+  private async initializeClient(client: LspClient, ext: string): Promise<void> {
     const params: InitializeParams = {
       processId: null,
       rootUri: this.rootUri,
@@ -79,16 +81,21 @@ export class LspManager {
       workspaceFolders: [{ uri: this.rootUri, name: "root" }],
     };
 
-    await client.request<InitializeResult>("initialize", params);
-    client.notify("initialized", {});
+    try {
+      await client.request<InitializeResult>("initialize", params);
+      client.notify("initialized", {});
 
-    client.onNotification("textDocument/publishDiagnostics", (params) => {
-      const p = params as PublishDiagnosticsParams;
-      const doc = this.documents.get(p.uri);
-      if (doc) {
-        this.updateDiagnostics(p.uri, client, p.diagnostics);
-      }
-    });
+      client.onNotification("textDocument/publishDiagnostics", (params) => {
+        const p = params as PublishDiagnosticsParams;
+        const doc = this.documents.get(p.uri);
+        if (doc) {
+          this.updateDiagnostics(p.uri, client, p.diagnostics);
+        }
+      });
+    } catch (err) {
+      this.logs?.error(`Failed to initialize LSP for ".${ext}"`, err);
+      throw err;
+    }
   }
 
   async openDocument(
@@ -103,7 +110,11 @@ export class LspManager {
     const uri = toUriFn(filePath);
     this.documents.set(uri, { version: 0, view, ext });
 
-    await Promise.all(entries.map((e) => e.initialized));
+    try {
+      await Promise.all(entries.map((e) => e.initialized));
+    } catch (err) {
+      this.logs?.warn(`LSP not ready for ".${ext}" (${filePath})`, err);
+    }
 
     const params: DidOpenTextDocumentParams = {
       textDocument: {
@@ -114,7 +125,11 @@ export class LspManager {
       },
     };
     for (const entry of entries) {
-      entry.client.notify("textDocument/didOpen", params);
+      try {
+        entry.client.notify("textDocument/didOpen", params);
+      } catch (err) {
+        this.logs?.warn(`LSP didOpen notify failed for "${filePath}"`, err);
+      }
     }
   }
 
@@ -132,7 +147,11 @@ export class LspManager {
       contentChanges: [{ text: content }],
     };
     for (const entry of entries) {
-      entry.client.notify("textDocument/didChange", params);
+      try {
+        entry.client.notify("textDocument/didChange", params);
+      } catch (err) {
+        this.logs?.warn(`LSP didChange notify failed for "${filePath}"`, err);
+      }
     }
   }
 
@@ -151,7 +170,11 @@ export class LspManager {
       textDocument: { uri },
     };
     for (const entry of entries) {
-      entry.client.notify("textDocument/didClose", params);
+      try {
+        entry.client.notify("textDocument/didClose", params);
+      } catch (err) {
+        this.logs?.warn(`LSP didClose notify failed for "${filePath}"`, err);
+      }
     }
   }
 
@@ -180,7 +203,8 @@ export class LspManager {
             return { isIncomplete: false, items: result } as CompletionList;
           }
           return result;
-        } catch {
+        } catch (err) {
+          this.logs?.warn(`LSP completion request failed for "${filePath}"`, err);
           return null;
         }
       }),
@@ -198,12 +222,7 @@ export class LspManager {
     return { isIncomplete, items: allItems };
   }
 
-  async hover(
-    ext: string,
-    filePath: string,
-    pos: number,
-    doc: Text,
-  ): Promise<Hover | null> {
+  async hover(ext: string, filePath: string, pos: number, doc: Text): Promise<Hover | null> {
     const entries = this.getEntries(ext);
     if (entries.length === 0) return null;
 
@@ -215,11 +234,12 @@ export class LspManager {
     const results = await Promise.all(
       entries.map(async (entry) => {
         try {
-          return await entry.client.request<Hover | null>(
-            "textDocument/hover",
-            { textDocument: { uri }, position: lspPos },
-          );
-        } catch {
+          return await entry.client.request<Hover | null>("textDocument/hover", {
+            textDocument: { uri },
+            position: lspPos,
+          });
+        } catch (err) {
+          this.logs?.warn(`LSP hover request failed for "${filePath}"`, err);
           return null;
         }
       }),
@@ -295,9 +315,7 @@ function extractHoverText(hover: Hover): string | null {
   const contents = hover.contents;
   if (typeof contents === "string") return contents;
   if (Array.isArray(contents)) {
-    return contents
-      .map((c) => (typeof c === "string" ? c : c.value))
-      .join("\n\n");
+    return contents.map((c) => (typeof c === "string" ? c : c.value)).join("\n\n");
   }
   if (typeof contents === "object" && "value" in contents) {
     return contents.value;

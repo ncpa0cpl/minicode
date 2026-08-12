@@ -37,13 +37,17 @@ export class TabsContext {
       this.focused.dispatch(file);
       return;
     }
-    fs.readFile(file.path, "utf-8").then((content) => {
-      this.data.dispatch((prev) => [
-        ...prev,
-        { file, initialContent: content, savedContent: content, dirty: sig(false) },
-      ]);
-      this.focused.dispatch(file);
-    });
+    fs.readFile(file.path, "utf-8")
+      .then((content) => {
+        this.data.dispatch((prev) => [
+          ...prev,
+          { file, initialContent: content, savedContent: content, dirty: sig(false) },
+        ]);
+        this.focused.dispatch(file);
+      })
+      .catch((err) => {
+        this.minicode.logs.error(`Failed to open file "${file.path}"`, err);
+      });
   }
 
   focus(file: File) {
@@ -118,7 +122,7 @@ export class TabsContext {
           const content = tab.view.state.doc.toString();
           await fs.writeFile(tab.file.path, content);
         } catch (err) {
-          console.error(err);
+          this.minicode.logs.error(`Failed to save file "${tab.file.path}"`, err);
           newTabs.push(tab);
         }
       }
@@ -132,11 +136,15 @@ export class TabsContext {
     if (!tab || !tab.view) {
       return;
     }
-    const fs = this.minicode.filesystem;
-    const content = tab.view.state.doc.toString();
-    await fs.writeFile(file.path, content);
-    tab.savedContent = content;
-    tab.dirty.dispatch(false);
+    try {
+      const fs = this.minicode.filesystem;
+      const content = tab.view.state.doc.toString();
+      await fs.writeFile(file.path, content);
+      tab.savedContent = content;
+      tab.dirty.dispatch(false);
+    } catch (err) {
+      this.minicode.logs.error(`Failed to save file "${file.path}"`, err);
+    }
   }
 
   updateTheme() {
@@ -161,8 +169,9 @@ export class TabsContext {
       tab.savedContent = content;
       tab.initialContent = content;
       tab.dirty.dispatch(false);
-    } catch {
+    } catch (err) {
       // file may have been deleted
+      this.minicode.logs.debug(`Failed to refresh file "${filePath}"`, err);
     }
   }
 
@@ -177,7 +186,8 @@ export class TabsContext {
           this.data.dispatch((prev) => prev.filter((t) => !t.file.eq(filePath)));
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        this.minicode.logs.debug(`File "${filePath}" no longer accessible`, err);
         this.data.dispatch((prev) => prev.filter((t) => !t.file.eq(filePath)));
       });
   }

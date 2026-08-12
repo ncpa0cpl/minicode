@@ -73,54 +73,58 @@ export class TerminalsContext {
 
   async open() {
     if (!this.factory) return;
-    const { Terminal } = await import("@xterm/xterm");
-    const { FitAddon } = await import("@xterm/addon-fit");
-    const term = new Terminal({
-      fontSize: 13,
-      fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
-      theme: this.getXtermTheme(),
-    });
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
+    try {
+      const { Terminal } = await import("@xterm/xterm");
+      const { FitAddon } = await import("@xterm/addon-fit");
+      const term = new Terminal({
+        fontSize: 13,
+        fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+        theme: this.getXtermTheme(),
+      });
+      const fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
 
-    const container = document.createElement("div");
-    container.style.width = "100%";
-    container.style.height = "100%";
-    term.open(container);
+      const container = document.createElement("div");
+      container.style.width = "100%";
+      container.style.height = "100%";
+      term.open(container);
 
-    const cols = term.cols;
-    const rows = term.rows;
-    const backend = this.factory({ cols, rows });
+      const cols = term.cols;
+      const rows = term.rows;
+      const backend = this.factory({ cols, rows });
 
-    const onDataDispose = term.onData((data) => backend.write(data));
-    const onBackendDataDispose = backend.onData((data) => term.write(data));
-    const onResizeDispose = term.onResize(({ cols, rows }) => backend.resize(cols, rows));
+      const onDataDispose = term.onData((data) => backend.write(data));
+      const onBackendDataDispose = backend.onData((data) => term.write(data));
+      const onResizeDispose = term.onResize(({ cols, rows }) => backend.resize(cols, rows));
 
-    const id = this.nextTerminalId++;
-    const tabData: TerminalTabData = {
-      id,
-      backend,
-      termEl: container,
-      fit: () => fitAddon.fit(),
-      setTheme: (theme) => {
-        term.options.theme = theme;
-      },
-      cleanup: () => {
-        onDataDispose.dispose();
-        onBackendDataDispose();
-        onResizeDispose.dispose();
-        backend.dispose();
-        term.dispose();
-      },
-    };
+      const id = this.nextTerminalId++;
+      const tabData: TerminalTabData = {
+        id,
+        backend,
+        termEl: container,
+        fit: () => fitAddon.fit(),
+        setTheme: (theme) => {
+          term.options.theme = theme;
+        },
+        cleanup: () => {
+          onDataDispose.dispose();
+          onBackendDataDispose();
+          onResizeDispose.dispose();
+          backend.dispose();
+          term.dispose();
+        },
+      };
 
-    await backend.start();
+      await backend.start();
 
-    this.data.dispatch((prev) => [...prev, tabData]);
-    this.isVisible.dispatch(true);
-    this.active.dispatch(id);
+      this.data.dispatch((prev) => [...prev, tabData]);
+      this.isVisible.dispatch(true);
+      this.active.dispatch(id);
 
-    requestAnimationFrame(() => fitAddon.fit());
+      requestAnimationFrame(() => fitAddon.fit());
+    } catch (err) {
+      this.minicode.logs.error("Failed to open terminal", err);
+    }
   }
 
   close(id: number) {

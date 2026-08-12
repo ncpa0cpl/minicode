@@ -38,7 +38,9 @@ class LspDocSyncPlugin implements PluginValue {
     private manager: LspManager,
     private file: File,
   ) {
-    this.manager.openDocument(file.ext!, file.path, view.state.doc.toString(), view);
+    this.manager.openDocument(file.ext!, file.path, view.state.doc.toString(), view).catch(() => {
+      // openDocument logs internally via LspManager
+    });
   }
 
   update(update: ViewUpdate) {
