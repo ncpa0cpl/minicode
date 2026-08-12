@@ -48,6 +48,7 @@ export class ThemesContext {
     theme = this.resolveTheme(theme);
     this.theme.dispatch(theme);
     this.minicode.storage.setItem(MiniCodeContext.storageKeys.theme, theme.name);
+    this.minicode.logs.info(`Theme set to "${theme.name}"`);
     this.minicode.tabs.updateTheme();
     this.minicode.terminals.updateTheme();
   }

@@ -66,7 +66,9 @@ export class MiniCodeContext {
   }
 
   async load() {
+    this.logs.info(`Loading workspace "${this.opts.root}"`);
     this.root = await this.loadDir(this.opts.root);
+    this.logs.debug("Workspace loaded, starting filesystem watch");
     const watchEvents = this.filesystem.watch(this.root.path, {
       recursive: true,
       signal: this.abort.signal,
@@ -76,6 +78,7 @@ export class MiniCodeContext {
       try {
         for await (const event of watchEvents) {
           if (!event.filename) continue;
+          this.logs.debug(`FS watch: ${event.eventType} "${event.filename}"`);
           const fullPath = Path.from(this.root.path).join(event.filename);
           const parentPath = fullPath.dir();
 
@@ -173,6 +176,7 @@ export class MiniCodeContext {
   async createFile(dirPath: string, name: string) {
     try {
       const filePath = Path.from(dirPath).join(name).toString();
+      this.logs.info(`Creating file "${filePath}"`);
       await this.filesystem.writeFile(filePath, "");
       await this.refreshDir(dirPath);
     } catch (err) {
@@ -183,6 +187,7 @@ export class MiniCodeContext {
   async createDirectory(dirPath: string, name: string) {
     try {
       const dirPathFull = Path.from(dirPath).join(name).toString();
+      this.logs.info(`Creating directory "${dirPathFull}"`);
       await this.filesystem.mkdir(dirPathFull);
       await this.refreshDir(dirPath);
     } catch (err) {
@@ -222,6 +227,7 @@ export class MiniCodeContext {
       if (!oldFile) return;
 
       const newPath = Path.from(oldPath).dir().join(newName).toString();
+      this.logs.info(`Renaming "${oldPath}" -> "${newPath}"`);
       await this.filesystem.rename(oldPath, newPath);
 
       this.tabs.renameTab(oldPath, oldFile.rename(newPath));
@@ -237,6 +243,7 @@ export class MiniCodeContext {
       if (!oldFile) return;
 
       const isDir = oldFile.isDir;
+      this.logs.info(`Deleting "${path}"${isDir ? " (directory)" : ""}`);
       await this.filesystem.rm(path, { recursive: isDir, force: true });
       this.tabs.close(oldFile);
       await this.refreshDir(Path.from(path).dir().toString());
@@ -273,6 +280,7 @@ export class MiniCodeContext {
         finalDest = Path.from(destDir).join(`${baseName} ${i}${suffix}`).toString();
         i++;
       }
+      this.logs.info(`Copying "${srcPath}" -> "${finalDest}"`);
       await this.filesystem.copyFile(srcPath, finalDest);
       await this.refreshDir(destDir);
     } catch (err) {
@@ -287,6 +295,7 @@ export class MiniCodeContext {
 
       const name = oldFile.name;
       const destPath = Path.from(destDir).join(name).toString();
+      this.logs.info(`Moving "${srcPath}" -> "${destPath}"`);
       await this.filesystem.rename(srcPath, destPath);
 
       this.tabs.renameTab(srcPath, oldFile.rename(destPath));

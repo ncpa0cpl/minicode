@@ -92,12 +92,13 @@ export class TerminalsContext {
       const cols = term.cols;
       const rows = term.rows;
       const backend = this.factory({ cols, rows });
+      const id = this.nextTerminalId++;
+      this.minicode.logs.info(`Opening terminal #${id} (${cols}x${rows})`);
 
       const onDataDispose = term.onData((data) => backend.write(data));
       const onBackendDataDispose = backend.onData((data) => term.write(data));
       const onResizeDispose = term.onResize(({ cols, rows }) => backend.resize(cols, rows));
 
-      const id = this.nextTerminalId++;
       const tabData: TerminalTabData = {
         id,
         backend,
@@ -116,6 +117,7 @@ export class TerminalsContext {
       };
 
       await backend.start();
+      this.minicode.logs.debug(`Terminal #${id} backend started`);
 
       this.data.dispatch((prev) => [...prev, tabData]);
       this.isVisible.dispatch(true);
@@ -136,6 +138,7 @@ export class TerminalsContext {
 
     const tab = terms[idx]!;
     tab.cleanup();
+    this.minicode.logs.info(`Closing terminal #${id}`);
 
     const newData = terms.slice();
     newData.splice(idx, 1);

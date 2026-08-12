@@ -57,17 +57,18 @@ export class LspManager {
     if (!factory) return [];
 
     const factoryList = Array.isArray(factory) ? factory : [factory];
-    entries = factoryList.map((f) => {
+    this.logs?.info(`Creating LSP client(s) for "${key}"`);
+    entries = factoryList.map((f, i) => {
       const transport = f({ rootUri: this.rootUri });
       const client = new LspClient(transport);
-      const initialized = this.initializeClient(client, ext);
+      const initialized = this.initializeClient(client, ext, i);
       return { client, initialized };
     });
     this.clients.set(key, entries);
     return entries;
   }
 
-  private async initializeClient(client: LspClient, ext: string): Promise<void> {
+  private async initializeClient(client: LspClient, ext: string, idx = 0): Promise<void> {
     const params: InitializeParams = {
       processId: null,
       rootUri: this.rootUri,
@@ -81,9 +82,11 @@ export class LspManager {
       workspaceFolders: [{ uri: this.rootUri, name: "root" }],
     };
 
+    this.logs?.debug(`LSP[${ext}#${idx}] initializing`);
     try {
       await client.request<InitializeResult>("initialize", params);
       client.notify("initialized", {});
+      this.logs?.info(`LSP[${ext}#${idx}] initialized`);
 
       client.onNotification("textDocument/publishDiagnostics", (params) => {
         const p = params as PublishDiagnosticsParams;
@@ -93,7 +96,7 @@ export class LspManager {
         }
       });
     } catch (err) {
-      this.logs?.error(`Failed to initialize LSP for ".${ext}"`, err);
+      this.logs?.error(`Failed to initialize LSP[${ext}#${idx}]`, err);
       throw err;
     }
   }
@@ -109,6 +112,7 @@ export class LspManager {
 
     const uri = toUriFn(filePath);
     this.documents.set(uri, { version: 0, view, ext });
+    this.logs?.debug(`LSP open document "${filePath}" (${ext})`);
 
     try {
       await Promise.all(entries.map((e) => e.initialized));
@@ -162,6 +166,7 @@ export class LspManager {
 
     this.documents.delete(uri);
     this.diagnosticsByUri.delete(uri);
+    this.logs?.debug(`LSP close document "${filePath}"`);
 
     const entries = this.getEntries(doc.ext);
     if (entries.length === 0) return;
@@ -290,6 +295,7 @@ export class LspManager {
   }
 
   dispose() {
+    this.logs?.debug("LSP manager disposing");
     for (const [, entries] of this.clients) {
       for (const entry of entries) {
         entry.client.dispose();
