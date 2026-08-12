@@ -2,6 +2,7 @@ import { sig, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { MiniCodeOptions } from "../../mini-code";
 import { TerminalFactory, TerminalTabData } from "./types";
+import { localSig } from "../../utils/local-signal";
 
 export class TerminalsContext {
   data = sig<TerminalTabData[]>([]);
@@ -18,14 +19,8 @@ export class TerminalsContext {
     const storage = minicode.storage;
 
     this.factory = opts.terminal;
-    this.isVisible = sig(storage.getItem(MiniCodeContext.storageKeys.terminalVisible) === "true");
-    this.height = sig(Number(storage.getItem(MiniCodeContext.storageKeys.terminalHeight)) || 250);
-    this.isVisible.add((v) => {
-      storage.setItem(MiniCodeContext.storageKeys.terminalVisible, String(v));
-    });
-    this.height.add((h) => {
-      storage.setItem(MiniCodeContext.storageKeys.terminalHeight, String(h));
-    });
+    this.isVisible = localSig(storage, MiniCodeContext.storageKeys.terminalVisible, true);
+    this.height = localSig(storage, MiniCodeContext.storageKeys.terminalHeight, 250);
 
     if (this.isVisible.get()) {
       if (this.hasTerminalSupport()) {

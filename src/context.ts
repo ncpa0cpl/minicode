@@ -9,6 +9,7 @@ import { TabsContext } from "./modules/tabs/tabs";
 import { LspContext } from "./modules/lsp/context";
 import { ThemesContext } from "./modules/theme/theme";
 import { LogContext } from "./modules/log/log";
+import { localSig } from "./utils/local-signal";
 
 export class MiniCodeContext {
   static storageKeys = {
@@ -44,13 +45,7 @@ export class MiniCodeContext {
     this.lsp = new LspContext(this, opts);
     this.themes = new ThemesContext(this, opts);
 
-    this.fileTreeWidth = sig(
-      Number(this.storage.getItem(MiniCodeContext.storageKeys.fileTreeWidth)) || 360,
-    );
-
-    this.fileTreeWidth.add((w) => {
-      this.storage.setItem(MiniCodeContext.storageKeys.fileTreeWidth, String(w));
-    });
+    this.fileTreeWidth = localSig(this.storage, MiniCodeContext.storageKeys.fileTreeWidth, 360);
   }
 
   getLanguageExtensions(file: File) {

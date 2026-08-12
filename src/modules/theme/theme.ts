@@ -1,4 +1,4 @@
-import { sig, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
+import { ReadonlySignal, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { MiniCodeOptions } from "../../mini-code";
 import {
@@ -13,9 +13,11 @@ import {
   type HighlightStyle,
 } from "./themes";
 import { Compartment } from "@codemirror/state";
+import { localSig } from "../../utils/local-signal";
 
 export class ThemesContext {
-  theme: Signal<Theme>;
+  themeName: Signal<string>;
+  theme: ReadonlySignal<Theme>;
   available: Theme[] = [];
 
   private syntaxTheme: HighlightStyle | undefined;
@@ -30,9 +32,14 @@ export class ThemesContext {
     this.available = [darkTheme, lightTheme, gnomeDarkTheme, gnomeLightTheme].concat(
       opts.themes ?? [],
     );
-    this.theme = sig<Theme>(
-      this.resolveTheme(opts.theme ?? minicode.storage.getItem(MiniCodeContext.storageKeys.theme)),
+    this.addThemeIfNotExist(opts.theme);
+
+    this.themeName = localSig(
+      this.minicode.storage,
+      MiniCodeContext.storageKeys.theme,
+      (typeof opts.theme === "string" ? opts.theme : opts.theme?.name) ?? darkTheme.name,
     );
+    this.theme = this.themeName.derive((tn) => this.resolveTheme(tn));
 
     if (!this.available.some((t) => t.name === this.theme.get().name)) {
       this.available.unshift(this.theme.get());
@@ -44,10 +51,18 @@ export class ThemesContext {
     return name ?? darkTheme;
   }
 
+  private addThemeIfNotExist(theme: ThemeInput | undefined) {
+    if (theme && typeof theme !== "string") {
+      if (!this.available.some((t) => t.name === theme.name)) {
+        this.available.push(theme);
+      }
+    }
+  }
+
   set(theme: ThemeInput) {
+    this.addThemeIfNotExist(theme);
     theme = this.resolveTheme(theme);
-    this.theme.dispatch(theme);
-    this.minicode.storage.setItem(MiniCodeContext.storageKeys.theme, theme.name);
+    this.themeName.dispatch(theme.name);
     this.minicode.logs.info(`Theme set to "${theme.name}"`);
     this.minicode.tabs.updateTheme();
     this.minicode.terminals.updateTheme();

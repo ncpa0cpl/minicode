@@ -52,6 +52,49 @@ export function ChevronIcon() {
   );
 }
 
+export function CollapseIcon() {
+  return (
+    <svg
+      attribute:width="12"
+      attribute:height="12"
+      attribute:viewBox="0 0 16 16"
+      attribute:fill="none"
+    >
+      <path
+        attribute:d="M2 4.5h5.5L9 6h5"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+        attribute:stroke-linejoin="round"
+      />
+      <path
+        attribute:d="M2 11.5h3.5L7 10h2"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+        attribute:stroke-linejoin="round"
+      />
+      <path
+        attribute:d="M10.5 9l2.5 2.5L10.5 14"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+        attribute:stroke-linejoin="round"
+        attribute:fill="none"
+      />
+      <line
+        attribute:x1="12.5"
+        attribute:y1="11.5"
+        attribute:x2="15.5"
+        attribute:y2="11.5"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+      />
+    </svg>
+  );
+}
+
 export function DirIcon(props: { expanded: ReadonlySignal<boolean> }) {
   return (
     <svg

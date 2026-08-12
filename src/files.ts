@@ -70,6 +70,23 @@ export class File {
     return this.children!;
   }
 
+  collapseAll(recursive: boolean) {
+    if (!this.isDirectory || !this._expanded) return;
+    if (recursive) {
+      for (const childSig of this.children!.get()) {
+        childSig.get().collapseAll(true);
+      }
+    }
+    this._expanded.dispatch(false);
+  }
+
+  collapseChildren() {
+    if (!this.isDirectory || !this._expanded) return;
+    for (const childSig of this.children!.get()) {
+      childSig.get().collapseAll(true);
+    }
+  }
+
   eq(f: File | Path | string) {
     if (typeof f === "string" || f instanceof Path) {
       return this._path.equals(f);

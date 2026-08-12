@@ -3,7 +3,7 @@ import { MiniCodeContext } from "../../context";
 import { File } from "../../files";
 import { ContextMenu } from "../context-menu/context-menu";
 import { useFileContextMenu } from "./context-menu";
-import { ChevronIcon, DirIcon, FileIcon } from "./icons";
+import { ChevronIcon, CollapseIcon, DirIcon, FileIcon } from "./icons";
 import { PromptModal } from "../prompt-modal/prompt-modal";
 
 const MIN_WIDTH = 150;
@@ -100,6 +100,84 @@ const FileTreeStyles = css`
         display: none;
       }
     }
+
+    & .row .collapse-btn {
+      flex: 0 0 18px;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--minicode-muted, #6b7280);
+      cursor: pointer;
+      outline: none;
+      padding: 0;
+      opacity: 0;
+      transition:
+        opacity 100ms ease,
+        background 100ms ease;
+      border-radius: 3px;
+
+      &:hover {
+        color: var(--minicode-fg, #cdd3de);
+        background: var(--minicode-hover, #232834);
+      }
+    }
+
+    & .row:hover .collapse-btn {
+      opacity: 1;
+    }
+  }
+
+  .project-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--minicode-border, #2a2f3a);
+    font-weight: 600;
+    color: var(--minicode-fg, #cdd3de);
+    user-select: none;
+    position: relative;
+
+    & .project-name {
+      flex: 1 1 auto;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    & .collapse-btn {
+      flex: 0 0 18px;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--minicode-muted, #6b7280);
+      cursor: pointer;
+      outline: none;
+      padding: 0;
+      border-radius: 3px;
+      opacity: 0.6;
+      transition:
+        opacity 100ms ease,
+        background 100ms ease;
+
+      &:hover {
+        opacity: 1;
+        color: var(--minicode-fg, #cdd3de);
+        background: var(--minicode-hover, #232834);
+      }
+    }
   }
 
   .resizer {
@@ -146,6 +224,19 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
   return (
     <div class={FileTreeStyles} style={{ width: width, display: "flex", flexDirection: "row" }}>
       <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, null, false)}>
+        <div class="project-header">
+          <span class="project-name">{ctx.root.name}</span>
+          <button
+            class="collapse-btn"
+            title="Collapse all directories"
+            onclick={(e: MouseEvent) => {
+              e.stopPropagation();
+              ctx.root.collapseAll(true);
+            }}
+          >
+            <CollapseIcon />
+          </button>
+        </div>
         {ctx.root.files().$map((f) => {
           return (
             <div>
@@ -223,6 +314,16 @@ function FileTreeDirectory(props: {
           <DirIcon expanded={expanded} />
         </span>
         <span class="label">{dir.name}</span>
+        <span
+          class="collapse-btn"
+          title="Collapse subdirectories"
+          onclick={(e: MouseEvent) => {
+            e.stopPropagation();
+            dir.collapseChildren();
+          }}
+        >
+          <CollapseIcon />
+        </span>
       </button>
       <div class={{ dirfiles: true, collapsed: expanded.derive((e) => !e) }}>
         {dir.files().$map((f) => {
