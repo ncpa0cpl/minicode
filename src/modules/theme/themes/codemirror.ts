@@ -89,6 +89,42 @@ export function defineCodeMirrorTheme(theme: Theme): Extension {
       "& .cm-scroller::-webkit-scrollbar-corner": {
         background: "transparent",
       },
+      ".cm-tooltip": {
+        backgroundColor: theme.bg,
+        border: `1px solid ${theme.border}`,
+        borderRadius: "6px",
+        boxShadow: "0 6px 16px rgba(0, 0, 0, 0.4)",
+        fontFamily: 'var(--minicode-font, ui-monospace, "SF Mono", Menlo, Consolas, monospace)',
+        fontSize: "13px",
+        color: theme.fg,
+      },
+      ".cm-tooltip-autocomplete > ul": {
+        fontFamily: 'var(--minicode-font, ui-monospace, "SF Mono", Menlo, Consolas, monospace)',
+      },
+      ".cm-tooltip-autocomplete > ul > li": {
+        padding: "2px 8px",
+      },
+      ".cm-tooltip.cm-lsp-hover": {
+        backgroundColor: theme.editorBg,
+        border: `1px solid ${theme.border}`,
+        borderRadius: "6px",
+        boxShadow: "0 6px 16px rgba(0, 0, 0, 0.4)",
+        padding: "8px 12px",
+        maxWidth: "500px",
+        maxHeight: "300px",
+        overflow: "auto",
+        color: theme.editorFg,
+        fontFamily: 'var(--minicode-font, ui-monospace, "SF Mono", Menlo, Consolas, monospace)',
+        fontSize: "12px",
+        lineHeight: "1.5",
+        userSelect: "text",
+        whiteSpace: "pre-wrap",
+        "& code, & .cm-codeblock": {
+          backgroundColor: withAlpha(theme.bg, 0.5),
+          padding: "1px 3px",
+          borderRadius: "3px",
+        },
+      },
     },
     { dark: theme.variant === "dark" },
   );

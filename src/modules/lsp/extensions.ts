@@ -148,7 +148,7 @@ async function lspHoverTooltip(
     create() {
       const dom = document.createElement("div");
       dom.className = "cm-lsp-hover";
-      dom.textContent = text;
+      renderHoverContent(dom, text);
       return { dom };
     },
   };
@@ -164,4 +164,43 @@ function extractHoverText(hover: Hover): string | null {
     return contents.value;
   }
   return null;
+}
+
+function renderHoverContent(dom: HTMLElement, text: string) {
+  const lines = text.split("\n");
+  let inCodeBlock = false;
+  const fragments: HTMLElement[] = [];
+  let codeLines: string[] = [];
+
+  const flushCode = () => {
+    if (codeLines.length === 0) return;
+    const pre = document.createElement("pre");
+    pre.className = "cm-codeblock";
+    pre.textContent = codeLines.join("\n");
+    fragments.push(pre);
+    codeLines = [];
+  };
+
+  for (const line of lines) {
+    if (line.startsWith("```")) {
+      if (inCodeBlock) {
+        flushCode();
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+      }
+      continue;
+    }
+    if (inCodeBlock) {
+      codeLines.push(line);
+    } else {
+      const p = document.createElement("div");
+      p.textContent = line;
+      if (line.trim() === "") p.style.height = "0.5em";
+      fragments.push(p);
+    }
+  }
+  flushCode();
+
+  for (const f of fragments) dom.appendChild(f);
 }

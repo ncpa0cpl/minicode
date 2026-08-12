@@ -36,6 +36,12 @@ export interface LspTransport {
   close(): void;
 }
 
+export interface LspServerRequest {
+  method: string;
+  params?: unknown;
+  id: number | string;
+}
+
 export interface LspTransportContext {
   rootUri: string;
 }

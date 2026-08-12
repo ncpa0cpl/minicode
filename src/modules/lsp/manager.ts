@@ -32,6 +32,21 @@ interface LspEntry {
 
 export type LspFactoryConfig = Record<string, LspTransportFactory | LspTransportFactory[]>;
 
+const EXT_TO_LANGUAGE_ID: Record<string, string> = {
+  ts: "typescript",
+  tsx: "typescriptreact",
+  js: "javascript",
+  jsx: "javascriptreact",
+  mjs: "javascript",
+  cjs: "javascript",
+  json: "json",
+  go: "go",
+};
+
+function languageIdForExt(ext: string): string {
+  return EXT_TO_LANGUAGE_ID[ext] ?? ext;
+}
+
 export class LspManager {
   private clients = new Map<string, LspEntry[]>();
   private documents = new Map<string, OpenDoc>();
@@ -83,6 +98,13 @@ export class LspManager {
           synchronization: { didOpen: true, didChange: true, didClose: true },
           completion: { completionItem: { snippet: false } },
           hover: { contentFormat: ["markdown", "plaintext"] },
+          publishDiagnostics: { relatedInformation: true },
+        },
+        workspace: {
+          workspaceFolders: true,
+          configuration: true,
+          didChangeConfiguration: { dynamicRegistration: true },
+          didChangeWatchedFiles: { dynamicRegistration: true },
         },
       },
       workspaceFolders: [{ uri: this.rootUri, name: "root" }],
@@ -94,13 +116,18 @@ export class LspManager {
       client.notify("initialized", {});
       this.logs?.info(`LSP[${ext}#${idx}] initialized`);
 
-      client.onNotification("textDocument/publishDiagnostics", (params) => {
-        const p = params as PublishDiagnosticsParams;
-        const doc = this.documents.get(p.uri);
-        if (doc) {
-          this.updateDiagnostics(p.uri, client, p.diagnostics);
-        }
-      });
+    client.onNotification("textDocument/publishDiagnostics", (params) => {
+      const p = params as PublishDiagnosticsParams;
+      this.logs?.debug(
+        `LSP publishDiagnostics for "${p.uri}": ${p.diagnostics.length} diagnostics`,
+      );
+      const doc = this.documents.get(p.uri);
+      if (doc) {
+        this.updateDiagnostics(p.uri, client, p.diagnostics);
+      } else {
+        this.logs?.debug(`LSP publishDiagnostics: no open document for "${p.uri}"`);
+      }
+    });
     } catch (err) {
       this.logs?.error(`Failed to initialize LSP[${ext}#${idx}]`, err);
       throw err;
@@ -129,7 +156,7 @@ export class LspManager {
     const params: DidOpenTextDocumentParams = {
       textDocument: {
         uri,
-        languageId: ext,
+        languageId: languageIdForExt(ext),
         version: 0,
         text: content,
       },
@@ -137,9 +164,33 @@ export class LspManager {
     for (const entry of entries) {
       try {
         entry.client.notify("textDocument/didOpen", params);
+        // Pull diagnostics — the TS Go LSP may not push them on open
+        this.requestDiagnostics(entry.client, uri).catch((err) => {
+          this.logs?.debug(`LSP diagnostic pull failed for "${filePath}"`, err);
+        });
       } catch (err) {
         this.logs?.warn(`LSP didOpen notify failed for "${filePath}"`, err);
       }
+    }
+  }
+
+  private async requestDiagnostics(client: LspClient, uri: string): Promise<void> {
+    try {
+      const result = await client.request<{
+        kind: "full" | "incremental";
+        items?: Array<{
+          range: { start: Position; end: Position };
+          severity?: number;
+          message: string;
+          source?: string;
+          code?: string | number;
+        }>;
+      }>("textDocument/diagnostic", { textDocument: { uri } });
+      if (result?.items) {
+        this.updateDiagnostics(uri, client, result.items as unknown as Diagnostic[]);
+      }
+    } catch {
+      // server may not support diagnostic pull — fall back to push
     }
   }
 
@@ -159,6 +210,7 @@ export class LspManager {
     for (const entry of entries) {
       try {
         entry.client.notify("textDocument/didChange", params);
+        this.requestDiagnostics(entry.client, uri).catch(() => {});
       } catch (err) {
         this.logs?.warn(`LSP didChange notify failed for "${filePath}"`, err);
       }
@@ -286,9 +338,13 @@ export class LspManager {
   }
 
   private applyDiagnostics(view: EditorView, diagnostics: Diagnostic[]): void {
+    this.logs?.debug(`LSP applyDiagnostics: ${diagnostics.length} diagnostics`);
     const cmDiagnostics: CmDiagnostic[] = diagnostics.map((d) => {
       const from = lspToCmPos(view.state.doc, d.range.start);
       const to = lspToCmPos(view.state.doc, d.range.end);
+      this.logs?.debug(
+        `LSP diag: "${d.message}" from=${from} to=${to} severity=${d.severity}`,
+      );
       return {
         from,
         to: Math.max(to, from + 1),
