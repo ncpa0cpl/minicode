@@ -211,6 +211,7 @@ const LogViewerStyles = css`
     white-space: pre-wrap;
     word-break: break-word;
     color: var(--minicode-fg, #cdd3de);
+    user-select: text;
   }
 
   .log-details-toggle {
@@ -238,6 +239,7 @@ const LogViewerStyles = css`
     white-space: pre-wrap;
     word-break: break-word;
     font-size: 12px;
+    user-select: text;
   }
 `;
 
@@ -354,21 +356,27 @@ function LogRow(props: {
 }) {
   const { entry, expanded, onToggle } = props;
   const hasDetails = entry.details !== undefined;
+
+  const onClick = () => {
+    if (hasDetails) {
+      onToggle();
+    }
+  };
+
   return (
     <div class="log-row">
-      <div class="log-row-head">
+      <div class="log-row-head" onclick={onClick}>
         <span class="log-time">{formatTime(entry.time)}</span>
         <span class={"log-badge lvl-" + entry.level}>{entry.level}</span>
         <span class="log-msg">{entry.message}</span>
         {hasDetails ? (
-          <button class="log-details-toggle" onclick={onToggle}>
-            {expanded.derive((e) => (e ? "[-]" : "[+]"))}
-          </button>
+          <button class="log-details-toggle">{expanded.derive((e) => (e ? "[-]" : "[+]"))}</button>
         ) : null}
       </div>
-      {hasDetails && expanded.derive((e) => e) ? (
-        <div class="log-details">{formatDetails(entry.details)}</div>
-      ) : null}
+      {hasDetails &&
+        expanded.derive((e) =>
+          e ? <div class="log-details">{formatDetails(entry.details)}</div> : null,
+        )}
     </div>
   );
 }

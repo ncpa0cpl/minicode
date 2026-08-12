@@ -58,12 +58,18 @@ export class LspManager {
 
     const factoryList = Array.isArray(factory) ? factory : [factory];
     this.logs?.info(`Creating LSP client(s) for "${key}"`);
-    entries = factoryList.map((f, i) => {
-      const transport = f({ rootUri: this.rootUri });
-      const client = new LspClient(transport);
-      const initialized = this.initializeClient(client, ext, i);
-      return { client, initialized };
-    });
+    entries = factoryList
+      .map((f, i) => {
+        try {
+          const transport = f({ rootUri: this.rootUri });
+          const client = new LspClient(transport);
+          const initialized = this.initializeClient(client, ext, i);
+          return { client, initialized };
+        } catch (err) {
+          this.logs?.error("Failed to initialize LSP", err);
+        }
+      })
+      .filter((v) => !!v);
     this.clients.set(key, entries);
     return entries;
   }
