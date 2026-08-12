@@ -2,6 +2,7 @@ import { css } from "embedcss";
 import { sig, type ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { type LogLevel, type LogEntry, LOG_LEVELS } from "../../modules/log/log";
+import { localSig } from "../../utils/local-signal";
 
 const LogViewerStyles = css`
   .log-overlay {
@@ -259,7 +260,11 @@ function formatDetails(d: unknown): string {
 }
 
 export function LogViewer({ ctx, onClose }: { ctx: MiniCodeContext; onClose: () => void }) {
-  const enabled = sig<Set<LogLevel>>(new Set(LOG_LEVELS));
+  const enabled = localSig<Array<LogLevel>>(ctx.storage, "minicode:logs-filter", [
+    "error",
+    "info",
+    "warn",
+  ]);
   const expanded = sig<Set<number>>(new Set());
 
   const toggleLevel = (lvl: LogLevel) => {
@@ -270,7 +275,7 @@ export function LogViewer({ ctx, onClose }: { ctx: MiniCodeContext; onClose: () 
       } else {
         next.add(lvl);
       }
-      return next;
+      return Array.from(next);
     });
   };
 
@@ -287,8 +292,8 @@ export function LogViewer({ ctx, onClose }: { ctx: MiniCodeContext; onClose: () 
   };
 
   const filtered = sig.derive(ctx.logs.logs, enabled, (logs, en) => {
-    if (en.size === 0) return logs;
-    return logs.filter((l) => en.has(l.level));
+    if (en.length === 0) return logs;
+    return logs.filter((l) => en.includes(l.level));
   });
 
   return (
@@ -303,7 +308,7 @@ export function LogViewer({ ctx, onClose }: { ctx: MiniCodeContext; onClose: () 
                   class={{
                     "log-filter": true,
                     ["lvl-" + lvl]: true,
-                    active: enabled.derive((en) => en.has(lvl)),
+                    active: enabled.derive((en) => en.includes(lvl)),
                   }}
                   onclick={() => toggleLevel(lvl)}
                 >

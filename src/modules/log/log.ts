@@ -51,8 +51,8 @@ export class LogContext {
     this.logs.dispatch([]);
   }
 
-  count(level: LogLevel): number {
-    return this.logs.get().filter((l) => l.level === level).length;
+  count(level: LogLevel) {
+    return this.logs.derive((logs) => logs.filter((l) => l.level === level).length);
   }
 }
 
