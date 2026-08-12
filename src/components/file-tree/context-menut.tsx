@@ -97,6 +97,15 @@ export function useFileContextMenu(ctx: MiniCodeContext) {
       });
     }
 
+    if (isDir) {
+      items.push({
+        label: "Refresh",
+        action: () => {
+          ctx.refreshDir(dirPath);
+        },
+      });
+    }
+
     return items;
   };
 
