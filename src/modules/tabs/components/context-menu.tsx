@@ -40,6 +40,13 @@ export function useTabsContextMenu(ctx: MiniCodeContext) {
       },
     });
     items.push({
+      label: "Save & Close",
+      action: async () => {
+        await ctx.tabs.save(tab.file);
+        ctx.tabs.close(tab.file);
+      },
+    });
+    items.push({
       label: "Save & Close All",
       action: () => {
         ctx.tabs.saveAndCloseAll();
