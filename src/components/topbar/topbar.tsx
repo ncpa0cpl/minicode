@@ -171,7 +171,7 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
     }
   };
 
-  const currentThemeName = ctx.theme.derive((t) => t.name);
+  const currentThemeName = ctx.themes.theme.derive((t) => t.name);
 
   return (
     <div class={TopBarStyles}>
@@ -183,14 +183,14 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
           {themeMenuOpen.derive((open) =>
             open ? (
               <div class="theme-menu">
-                {ctx.availableThemes.map((t) => (
+                {ctx.themes.available.map((t) => (
                   <button
                     class={{
                       "theme-item": true,
                       active: currentThemeName.derive((n) => n === t.name),
                     }}
                     onclick={() => {
-                      ctx.setTheme(t.name);
+                      ctx.themes.set(t.name);
                       themeMenuOpen.dispatch(false);
                     }}
                   >
@@ -207,9 +207,9 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
         <button
           class={{
             "icon-btn": true,
-            disabled: ctx.hasTerminalSupport() ? undefined : true,
+            disabled: ctx.terminals.hasTerminalSupport() ? undefined : true,
           }}
-          onclick={() => ctx.toggleTerminal()}
+          onclick={() => ctx.terminals.toggle()}
         >
           {terminalIcon()}
         </button>

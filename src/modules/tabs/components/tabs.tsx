@@ -1,8 +1,8 @@
 import { css } from "embedcss";
-import { MiniCodeContext, TabData } from "../../context";
+import { MiniCodeContext } from "../../../context";
 import { basicSetup, EditorView } from "codemirror";
-import { Range } from "@ncpa0cpl/vanilla-jsx";
-import { defineCodeMirrorTheme } from "../../themes";
+import { bindSignal, Range } from "@ncpa0cpl/vanilla-jsx";
+import { TabData } from "../types";
 const List = Range;
 
 function closeIcon() {
@@ -156,7 +156,7 @@ const TabsStyles = css`
 export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
   const tabEditor = (
     <div class="tab-editor">
-      {ctx.opendTabs.derive((tabs) =>
+      {ctx.tabs.data.derive((tabs) =>
         tabs.length === 0 ? <div class="empty-state">No file open</div> : null,
       )}
     </div>
@@ -164,8 +164,8 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
 
   const tabBar = (
     <div class="tab-bar">
-      {ctx.opendTabs.$map((t) => {
-        const active = ctx.focusedTab.derive((ft) => !!ft && ft.eq(t.file));
+      {ctx.tabs.data.$map((t) => {
+        const active = ctx.tabs.focused.derive((ft) => !!ft && ft.eq(t.file));
         return (
           <div
             class={{ "tab-btn": true, active }}
@@ -175,15 +175,15 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
             onauxclick={(e: MouseEvent) => {
               if (e.button === 1) {
                 e.preventDefault();
-                ctx.closeTab(t.file);
+                ctx.tabs.close(t.file);
               }
             }}
           >
-            <button class="tab-name" onclick={() => ctx.focusTab(t.file)}>
+            <button class="tab-name" onclick={() => ctx.tabs.focus(t.file)}>
               <span class={{ "tab-dot": true, dirty: t.dirty }}></span>
               <span class="tab-label">{t.file.name}</span>
             </button>
-            <button class="tab-close" onclick={() => ctx.closeTab(t.file)}>
+            <button class="tab-close" onclick={() => ctx.tabs.close(t.file)}>
               {closeIcon()}
             </button>
           </div>
@@ -192,9 +192,9 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
     </div>
   );
 
-  ctx.focusedTab.add(() => {
+  bindSignal(ctx.tabs.focused, tabBar, (bar) => {
     requestAnimationFrame(() => {
-      const el = tabBar.querySelector(".tab-btn.active");
+      const el = bar.querySelector(".tab-btn.active");
       if (el) {
         el.scrollIntoView({ inline: "nearest", block: "nearest" });
       }
@@ -204,7 +204,7 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
   return (
     <div class={TabsStyles}>
       {tabBar}
-      <List data={ctx.opendTabs} into={tabEditor}>
+      <List data={ctx.tabs.data} into={tabEditor}>
         {(t: TabData) => {
           t.view ??= new EditorView({
             doc: t.initialContent,
@@ -217,9 +217,8 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
                 }
               }),
               ...ctx.getLanguageExtensions(t.file),
-              ctx.lspCompartment.of(ctx.getLspExtensions(t.file)),
-              ctx.syntaxCompartment.of(ctx.getSyntaxExtension()),
-              ctx.themeCompartment.of(defineCodeMirrorTheme(ctx.theme.get())),
+              ...ctx.lsp.cmExtensions(t.file),
+              ...ctx.themes.cmExtensions(),
             ],
           });
 
@@ -227,7 +226,7 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
             <div
               class={{
                 codemirror: true,
-                focused: ctx.focusedTab.derive((ft) => ft && ft.eq(t.file)),
+                focused: ctx.tabs.focused.derive((ft) => ft && ft.eq(t.file)),
               }}
             >
               {t.view.dom}

@@ -69,4 +69,13 @@ export class File {
     }
     return this._path.equals(f._path);
   }
+
+  rename(newPath: string): File {
+    const renamed = new File(newPath, false);
+    renamed.isDirectory = this.isDirectory;
+    renamed.contents = this.contents;
+    renamed.children = this.children;
+    renamed._expanded = this._expanded;
+    return renamed;
+  }
 }

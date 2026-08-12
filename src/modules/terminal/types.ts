@@ -1,4 +1,5 @@
 export interface TerminalBackend {
+  start(): void | Promise<void>;
   write(data: string): void;
   onData(cb: (data: string) => void): () => void;
   resize(cols: number, rows: number): void;
@@ -6,3 +7,12 @@ export interface TerminalBackend {
 }
 
 export type TerminalFactory = (opts: { cols: number; rows: number }) => TerminalBackend;
+
+export type TerminalTabData = {
+  id: number;
+  backend: TerminalBackend;
+  termEl: HTMLElement;
+  fit: () => void;
+  setTheme: (theme: Record<string, string>) => void;
+  cleanup: () => void;
+};

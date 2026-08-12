@@ -52,12 +52,7 @@ export class Path {
 
   private concatSegments(): string {
     let result = this._type === "absolute" ? "/" : "";
-    for (const segment of this._segments) {
-      result += segment + "/";
-    }
-    if (this._segments.length > 0) {
-      result = result.slice(0, -1);
-    }
+    result += this._segments.join("/");
     return result;
   }
 
@@ -123,7 +118,7 @@ export class Path {
   }
 
   toString(): string {
-    return this.normalize().concatSegments();
+    return this.concatSegments();
   }
 
   segments(): string[] {
@@ -190,5 +185,42 @@ export class Path {
       }
     }
     return lastSegment;
+  }
+
+  relative(from: string | Path, startWithDot = true) {
+    from = Path.from(from);
+
+    if (!this.isAbsolute() || !from.isAbsolute()) {
+      throw new Error("realtive location can only be determined for absolute path");
+    }
+
+    const relPathSegments: string[] = startWithDot ? ["."] : [];
+
+    let backtrack = false;
+    let j = from._segments.length;
+    for (let i = 0; i < from._segments.length; i++) {
+      if (backtrack) {
+        relPathSegments.push("..");
+        continue;
+      }
+      if (this._segments[i] !== from._segments[i]) {
+        relPathSegments.push("..");
+        backtrack = true;
+        j = i;
+        continue;
+      }
+    }
+
+    if (j >= 0) {
+      for (; j < this._segments.length; j++) {
+        relPathSegments.push(this._segments[j]!);
+      }
+    }
+
+    const result = Object.create(Path.prototype) as Path;
+    result._segments = relPathSegments;
+    result._type = "relative";
+    Object.freeze(result._segments);
+    return result;
   }
 }

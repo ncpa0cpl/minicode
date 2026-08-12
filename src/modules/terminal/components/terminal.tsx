@@ -1,9 +1,9 @@
 import { css } from "embedcss";
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import { Range } from "@ncpa0cpl/vanilla-jsx";
-import { MiniCodeContext, type TerminalTabData } from "../../context";
-import { xtermCss } from "../../terminal/xterm-css";
-
+import { MiniCodeContext } from "../../../context";
+import { TerminalTabData } from "../types";
+import { xtermCss } from "../xterm-css";
 const List = Range;
 
 function closeIcon() {
@@ -174,21 +174,8 @@ const TerminalStyles = css`
 const MIN_HEIGHT = 80;
 
 export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
-  const height = ctx.terminalHeight;
-  const activeTerminalId = ctx.activeTerminalId;
-
-  const updateActive = (terms: TerminalTabData[]) => {
-    if (terms.length === 0) {
-      activeTerminalId.dispatch(null);
-      return;
-    }
-    const current = activeTerminalId.get();
-    if (current === null || !terms.some((t) => t.id === current)) {
-      activeTerminalId.dispatch(terms[0]!.id);
-    }
-  };
-
-  ctx.terminals.add(updateActive);
+  const height = ctx.terminals.height;
+  const activeTerminalId = ctx.terminals.active;
 
   const onPointerDown = (e: PointerEvent) => {
     e.preventDefault();
@@ -207,7 +194,7 @@ export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
       handle.removeEventListener("pointerup", onUp);
       handle.classList.remove("dragging");
       requestAnimationFrame(() => {
-        ctx.terminals.get().forEach((t) => t.fit());
+        ctx.terminals.data.get().forEach((t) => t.fit());
       });
     };
     handle.addEventListener("pointermove", onMove);
@@ -215,8 +202,8 @@ export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
   };
 
   const visible = sig.derive(
-    ctx.terminalVisible,
-    ctx.terminals,
+    ctx.terminals.isVisible,
+    ctx.terminals.data,
     (v, terms) => v && terms.length > 0,
   );
 
@@ -228,7 +215,7 @@ export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
 
   const resizeObserver = new ResizeObserver(() => {
     requestAnimationFrame(() => {
-      ctx.terminals.get().forEach((t) => t.fit());
+      ctx.terminals.data.get().forEach((t) => t.fit());
     });
   });
   resizeObserver.observe(bodyRef);
@@ -243,25 +230,25 @@ export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
     >
       <div class="terminal-resizer" onpointerdown={onPointerDown}></div>
       <div class="terminal-header">
-        {ctx.terminals.$map((t) => {
+        {ctx.terminals.data.$map((t) => {
           const active = activeTerminalId.derive((id) => id === t.id);
           return (
             <div class={{ "terminal-tab": true, active }}>
               <button class="terminal-tab-name" onclick={() => activeTerminalId.dispatch(t.id)}>
                 <span class="tab-label">Terminal {t.id + 1}</span>
               </button>
-              <button class="terminal-tab-close" onclick={() => ctx.closeTerminal(t.id)}>
+              <button class="terminal-tab-close" onclick={() => ctx.terminals.close(t.id)}>
                 {closeIcon()}
               </button>
             </div>
           );
         })}
-        <button class="terminal-new-btn" onclick={() => ctx.openTerminal()}>
+        <button class="terminal-new-btn" onclick={() => ctx.terminals.open()}>
           {plusIcon()}
         </button>
       </div>
       {bodyRef}
-      <List data={ctx.terminals} into={bodyRef}>
+      <List data={ctx.terminals.data} into={bodyRef}>
         {(t: TerminalTabData) => (
           <div
             class={{

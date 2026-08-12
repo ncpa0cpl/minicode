@@ -18,7 +18,7 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "auto",
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node", "bun"]
   },
   "exclude": ["scripts", "dist"]
 }

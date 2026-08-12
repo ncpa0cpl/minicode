@@ -1,16 +1,16 @@
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import { FileTree } from "./components/file-tree/file-tree";
-import { Tabs } from "./components/tabs/tabs";
-import { TerminalPanel } from "./components/terminal/terminal";
+import { Tabs } from "./modules/tabs/components/tabs";
+import { TerminalPanel } from "./modules/terminal/components/terminal";
 import { TopBar } from "./components/topbar/topbar";
 import { MiniCodeContext } from "./context";
 import { stylesheet } from "./styles";
 import { css } from "embedcss";
-import { Theme, themeToCssVars, type ThemeInput } from "./themes";
 import type { LanguagesConfig } from "./languages";
-import type { LspFactoryConfig } from "./lsp/manager";
-import type { TerminalFactory } from "./terminal/types";
 import type { HighlightStyle } from "@codemirror/language";
+import { TerminalFactory } from "./modules/terminal/types";
+import { LspFactoryConfig } from "./modules/lsp/manager";
+import { Theme, ThemeInput, themeToCssVars } from "./modules/theme/themes";
 
 export type Dirent = {
   isDirectory(): boolean;
@@ -165,9 +165,9 @@ export function MiniCode(opts: MiniCodeOptions) {
   const onkeydown = (e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "s" && !e.shiftKey && !e.altKey) {
       e.preventDefault();
-      const ft = ctx.focusedTab.get();
+      const ft = ctx.tabs.focused.get();
       if (ft) {
-        ctx.saveFile(ft);
+        ctx.tabs.save(ft);
       }
     }
   };
@@ -175,7 +175,7 @@ export function MiniCode(opts: MiniCodeOptions) {
   shadowRoot.append(
     <div
       class={minicodeStyles}
-      style={ctx.theme.derive((t) => themeToCssVars(t))}
+      style={ctx.themes.theme.derive(themeToCssVars)}
       onkeydown={onkeydown}
     >
       <style>{stylesheet}</style>

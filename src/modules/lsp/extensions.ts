@@ -1,11 +1,16 @@
 import type { EditorView, PluginValue, Tooltip, ViewUpdate } from "@codemirror/view";
 import { ViewPlugin, hoverTooltip } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
-import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from "@codemirror/autocomplete";
+import {
+  autocompletion,
+  type Completion,
+  type CompletionContext,
+  type CompletionResult,
+} from "@codemirror/autocomplete";
 import { lintGutter } from "@codemirror/lint";
 import type { LspManager } from "./manager";
 import type { CompletionItem, Hover, MarkupContent } from "./types";
-import { File } from "../files";
+import { File } from "../../files";
 
 export function createLspExtensions(manager: LspManager, file: File): Extension[] {
   const ext = file.ext;
@@ -33,12 +38,7 @@ class LspDocSyncPlugin implements PluginValue {
     private manager: LspManager,
     private file: File,
   ) {
-    this.manager.openDocument(
-      file.ext!,
-      file.path,
-      view.state.doc.toString(),
-      view,
-    );
+    this.manager.openDocument(file.ext!, file.path, view.state.doc.toString(), view);
   }
 
   update(update: ViewUpdate) {
@@ -60,12 +60,7 @@ async function lspCompletionSource(
   const word = ctx.matchBefore(/[\w$]+/);
   if (!word && !ctx.explicit) return null;
 
-  const result = await manager.completion(
-    file.ext!,
-    file.path,
-    ctx.pos,
-    ctx.state.doc,
-  );
+  const result = await manager.completion(file.ext!, file.path, ctx.pos, ctx.state.doc);
   if (!result || result.items.length === 0) return null;
 
   const from = word ? word.from : ctx.pos;
@@ -126,9 +121,7 @@ function lspKindToCmType(kind: number | undefined): Completion["type"] {
   }
 }
 
-function extractDoc(
-  doc: string | MarkupContent | undefined,
-): string | undefined {
+function extractDoc(doc: string | MarkupContent | undefined): string | undefined {
   if (!doc) return undefined;
   if (typeof doc === "string") return doc;
   if ("value" in doc) return doc.value;
@@ -163,9 +156,7 @@ function extractHoverText(hover: Hover): string | null {
   const contents = hover.contents;
   if (typeof contents === "string") return contents;
   if (Array.isArray(contents)) {
-    return contents
-      .map((c) => (typeof c === "string" ? c : c.value))
-      .join("\n\n");
+    return contents.map((c) => (typeof c === "string" ? c : c.value)).join("\n\n");
   }
   if (typeof contents === "object" && "value" in contents) {
     return contents.value;
