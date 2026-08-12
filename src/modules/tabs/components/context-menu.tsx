@@ -1,0 +1,67 @@
+import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
+import { MiniCodeContext } from "../../../context";
+import { MenuItem } from "../../../components/context-menu/context-menu";
+import { TabData } from "../types";
+
+type ContextMenuState = {
+  items: MenuItem[];
+  x: number;
+  y: number;
+};
+
+export function useTabsContextMenu(ctx: MiniCodeContext) {
+  const contextMenu = sig<ContextMenuState | null>(null);
+
+  const buildMenuItems = (tab: TabData): MenuItem[] => {
+    const items: MenuItem[] = [];
+
+    items.push({
+      label: "Close",
+      action: () => {
+        ctx.tabs.close(tab.file);
+      },
+    });
+    items.push({
+      label: "Close All",
+      action: () => {
+        ctx.tabs.closeAll();
+      },
+    });
+    items.push({
+      label: "Close Others",
+      action: () => {
+        ctx.tabs.closeOthers(tab.file);
+      },
+    });
+    items.push({
+      label: "Close Saved",
+      action: () => {
+        ctx.tabs.closeClean();
+      },
+    });
+    items.push({
+      label: "Save & Close All",
+      action: () => {
+        ctx.tabs.saveAndCloseAll();
+      },
+    });
+
+    return items;
+  };
+
+  const openContextMenu = (e: MouseEvent, tab: TabData) => {
+    e.preventDefault();
+    e.stopPropagation();
+    contextMenu.dispatch({
+      items: buildMenuItems(tab),
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  return {
+    contextMenu,
+    buildMenuItems,
+    openContextMenu,
+  };
+}

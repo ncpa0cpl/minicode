@@ -2,7 +2,7 @@ import { css } from "embedcss";
 import { MiniCodeContext } from "../../context";
 import { File } from "../../files";
 import { ContextMenu } from "../context-menu/context-menu";
-import { useFileContextMenu } from "./context-menut";
+import { useFileContextMenu } from "./context-menu";
 import { ChevronIcon, DirIcon, FileIcon } from "./icons";
 import { PromptModal } from "../prompt-modal/prompt-modal";
 

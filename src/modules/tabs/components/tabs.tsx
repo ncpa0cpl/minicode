@@ -3,6 +3,8 @@ import { MiniCodeContext } from "../../../context";
 import { basicSetup, EditorView } from "codemirror";
 import { bindSignal, Range } from "@ncpa0cpl/vanilla-jsx";
 import { TabData } from "../types";
+import { useTabsContextMenu } from "./context-menu";
+import { ContextMenu } from "../../../components/context-menu/context-menu";
 const List = Range;
 
 function closeIcon() {
@@ -154,6 +156,8 @@ const TabsStyles = css`
 `;
 
 export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
+  const { contextMenu, openContextMenu } = useTabsContextMenu(ctx);
+
   const tabEditor = (
     <div class="tab-editor">
       {ctx.tabs.data.derive((tabs) =>
@@ -178,6 +182,7 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
                 ctx.tabs.close(t.file);
               }
             }}
+            oncontextmenu={(e) => openContextMenu(e, t)}
           >
             <button class="tab-name" onclick={() => ctx.tabs.focus(t.file)}>
               <span class={{ "tab-dot": true, dirty: t.dirty }}></span>
@@ -189,6 +194,16 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
           </div>
         );
       })}
+      {contextMenu.derive((menu) =>
+        menu ? (
+          <ContextMenu
+            items={menu.items}
+            x={menu.x}
+            y={menu.y}
+            onClose={() => contextMenu.dispatch(null)}
+          />
+        ) : null,
+      )}
     </div>
   );
 
