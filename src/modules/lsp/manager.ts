@@ -116,18 +116,18 @@ export class LspManager {
       client.notify("initialized", {});
       this.logs?.info(`LSP[${ext}#${idx}] initialized`);
 
-    client.onNotification("textDocument/publishDiagnostics", (params) => {
-      const p = params as PublishDiagnosticsParams;
-      this.logs?.debug(
-        `LSP publishDiagnostics for "${p.uri}": ${p.diagnostics.length} diagnostics`,
-      );
-      const doc = this.documents.get(p.uri);
-      if (doc) {
-        this.updateDiagnostics(p.uri, client, p.diagnostics);
-      } else {
-        this.logs?.debug(`LSP publishDiagnostics: no open document for "${p.uri}"`);
-      }
-    });
+      client.onNotification("textDocument/publishDiagnostics", (params) => {
+        const p = params as PublishDiagnosticsParams;
+        this.logs?.debug(
+          `LSP publishDiagnostics for "${p.uri}": ${p.diagnostics.length} diagnostics`,
+        );
+        const doc = this.documents.get(p.uri);
+        if (doc) {
+          this.updateDiagnostics(p.uri, client, p.diagnostics);
+        } else {
+          this.logs?.debug(`LSP publishDiagnostics: no open document for "${p.uri}"`);
+        }
+      });
     } catch (err) {
       this.logs?.error(`Failed to initialize LSP[${ext}#${idx}]`, err);
       throw err;
@@ -342,9 +342,7 @@ export class LspManager {
     const cmDiagnostics: CmDiagnostic[] = diagnostics.map((d) => {
       const from = lspToCmPos(view.state.doc, d.range.start);
       const to = lspToCmPos(view.state.doc, d.range.end);
-      this.logs?.debug(
-        `LSP diag: "${d.message}" from=${from} to=${to} severity=${d.severity}`,
-      );
+      this.logs?.debug(`LSP diag: "${d.message}" from=${from} to=${to} severity=${d.severity}`);
       return {
         from,
         to: Math.max(to, from + 1),

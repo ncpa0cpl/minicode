@@ -143,7 +143,11 @@ const FileTreeStyles = css`
     font-weight: 600;
     color: var(--minicode-fg, #cdd3de);
     user-select: none;
-    position: relative;
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--minicode-bg, #1b1f27);
 
     & .project-name {
       flex: 1 1 auto;

@@ -1,9 +1,9 @@
 import { css } from "embedcss";
-import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
-import { Range } from "@ncpa0cpl/vanilla-jsx";
+import { bindSignal, Range } from "@ncpa0cpl/vanilla-jsx";
 import { MiniCodeContext } from "../../../context";
 import { TerminalTabData } from "../types";
 import { xtermCss } from "../xterm-css";
+import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 const List = Range;
 
 function closeIcon() {
@@ -201,11 +201,7 @@ export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
     handle.addEventListener("pointerup", onUp);
   };
 
-  const visible = sig.derive(
-    ctx.terminals.isVisible,
-    ctx.terminals.data,
-    (v, terms) => v && terms.length > 0,
-  );
+  const visible = ctx.terminals.isVisible;
 
   const bodyRef = (
     <div class="terminal-body">
@@ -220,12 +216,20 @@ export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
   });
   resizeObserver.observe(bodyRef);
 
+  const fitTerms = () =>
+    requestAnimationFrame(() => {
+      ctx.terminals.data.get().forEach((t) => t.fit());
+    });
+
+  bindSignal(visible, bodyRef, fitTerms);
+  bindSignal(activeTerminalId, bodyRef, fitTerms);
+
   return (
     <div
       class={TerminalStyles}
       style={{
-        height: sig.derive(visible, height, (v, h) => (v ? `${h}px` : "0px")),
-        display: visible.derive((v) => (v ? "flex" : "none")),
+        height: sig.literal`${height}px`,
+        display: sig.when(visible, "flex", "none"),
       }}
     >
       <div class="terminal-resizer" onpointerdown={onPointerDown}></div>

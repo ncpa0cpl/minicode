@@ -79,6 +79,11 @@ export class ThemesContext {
     return defineSyntaxHighlighting({ ...theme, syntax: style });
   }
 
+  getSyntaxStyle(): HighlightStyle | undefined {
+    const theme = this.theme.get();
+    return this.syntaxTheme ?? theme.syntax;
+  }
+
   cmExtensions() {
     return [
       this.syntaxCompartment.of(this.getSyntaxExtension()),

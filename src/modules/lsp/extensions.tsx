@@ -1,23 +1,57 @@
 import type { EditorView, PluginValue, Tooltip, ViewUpdate } from "@codemirror/view";
 import { ViewPlugin, hoverTooltip } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import type { HighlightStyle } from "@codemirror/language";
 import {
   autocompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
 } from "@codemirror/autocomplete";
-import { lintGutter } from "@codemirror/lint";
 import type { LspManager } from "./manager";
 import type { CompletionItem, Hover, MarkupContent } from "./types";
 import { File } from "../../files";
+import { highlightCodeToHtml, prettifyErrorMessage } from "./highlight";
 
-export function createLspExtensions(manager: LspManager, file: File): Extension[] {
+declare class TrustedHTML {}
+
+type HTMLTrustPolicy = {
+  createHTML(html: string): string & TrustedHTML;
+};
+
+declare const trustedTypes:
+  | undefined
+  | {
+      createPolicy(
+        name: string,
+        opts: {
+          createHTML: (str: string) => string;
+        },
+      ): HTMLTrustPolicy;
+    };
+
+function trustHtmlFactory() {
+  if (typeof trustedTypes === "undefined") return (html: string) => html;
+
+  const trustedHTMLPolicy = trustedTypes.createPolicy("myEscapePolicy", {
+    createHTML: (string) => string,
+  });
+
+  return (html: string) => trustedHTMLPolicy.createHTML(html);
+}
+
+const trustHtml = trustHtmlFactory();
+
+export function createLspExtensions(
+  manager: LspManager,
+  file: File,
+  highlightStyle?: HighlightStyle,
+): Extension[] {
   const ext = file.ext;
   if (!ext || !manager.hasLsp(ext)) return [];
 
   return [
-    lintGutter(),
+    // Prec.low(lintGutter()),
     ViewPlugin.define((view) => new LspDocSyncPlugin(view, manager, file)),
     autocompletion({
       override: [
@@ -26,7 +60,7 @@ export function createLspExtensions(manager: LspManager, file: File): Extension[
         },
       ],
     }),
-    hoverTooltip((view, pos, _side) => lspHoverTooltip(manager, file, view, pos), {
+    hoverTooltip((view, pos, _side) => lspHoverTooltip(manager, file, view, pos, highlightStyle), {
       hideOnChange: true,
     }),
   ];
@@ -135,6 +169,7 @@ async function lspHoverTooltip(
   file: File,
   view: EditorView,
   pos: number,
+  highlightStyle?: HighlightStyle,
 ): Promise<Tooltip | null> {
   const result = await manager.hover(file.ext!, file.path, pos, view.state.doc);
   if (!result) return null;
@@ -142,13 +177,32 @@ async function lspHoverTooltip(
   const text = extractHoverText(result);
   if (!text) return null;
 
+  const MAX_CHARS = 2000;
+  const truncated = text.length > MAX_CHARS;
+  const displayText = truncated ? text.slice(0, MAX_CHARS) : text;
+
   return {
     pos,
     above: true,
     create() {
       const dom = document.createElement("div");
       dom.className = "cm-lsp-hover";
-      renderHoverContent(dom, text);
+      renderHoverContent(dom, displayText, highlightStyle);
+      if (truncated) {
+        const more = (
+          <div
+            style={{
+              marginTop: 4,
+              color: "var(--minicode-muted, #6b7280)",
+              fontStyle: "italic",
+              fontSize: 11,
+            }}
+          >
+            ... (truncated)
+          </div>
+        );
+        dom.appendChild(more);
+      }
       return { dom };
     },
   };
@@ -166,7 +220,7 @@ function extractHoverText(hover: Hover): string | null {
   return null;
 }
 
-function renderHoverContent(dom: HTMLElement, text: string) {
+function renderHoverContent(dom: HTMLElement, text: string, highlightStyle?: HighlightStyle) {
   const lines = text.split("\n");
   let inCodeBlock = false;
   const fragments: HTMLElement[] = [];
@@ -174,9 +228,14 @@ function renderHoverContent(dom: HTMLElement, text: string) {
 
   const flushCode = () => {
     if (codeLines.length === 0) return;
+    const code = codeLines.join("\n");
     const pre = document.createElement("pre");
     pre.className = "cm-codeblock";
-    pre.textContent = codeLines.join("\n");
+    if (highlightStyle) {
+      pre.innerHTML = trustHtml(highlightCodeToHtml(code, highlightStyle));
+    } else {
+      pre.textContent = code;
+    }
     fragments.push(pre);
     codeLines = [];
   };
@@ -194,10 +253,15 @@ function renderHoverContent(dom: HTMLElement, text: string) {
     if (inCodeBlock) {
       codeLines.push(line);
     } else {
-      const p = document.createElement("div");
-      p.textContent = line;
-      if (line.trim() === "") p.style.height = "0.5em";
-      fragments.push(p);
+      if (line.trim().length > 0) {
+        if (highlightStyle && /'[^']{2,}'/.test(line)) {
+          const p = (<div className="cm-hover-msg" />) as HTMLElement;
+          p.innerHTML = trustHtml(prettifyErrorMessage(line, highlightStyle));
+          fragments.push(p);
+        } else {
+          fragments.push((<div className="cm-hover-msg">{line}</div>) as HTMLElement);
+        }
+      }
     }
   }
   flushCode();

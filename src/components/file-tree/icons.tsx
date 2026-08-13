@@ -55,41 +55,25 @@ export function ChevronIcon() {
 export function CollapseIcon() {
   return (
     <svg
-      attribute:width="12"
-      attribute:height="12"
+      attribute:width="14"
+      attribute:height="14"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
       <path
-        attribute:d="M2 4.5h5.5L9 6h5"
+        attribute:d="M1.5 4.5h4l1.2 1.5h7.8v7.5a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1v-8z"
         attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linecap="round"
-        attribute:stroke-linejoin="round"
-      />
-      <path
-        attribute:d="M2 11.5h3.5L7 10h2"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linecap="round"
-        attribute:stroke-linejoin="round"
-      />
-      <path
-        attribute:d="M10.5 9l2.5 2.5L10.5 14"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linecap="round"
+        attribute:stroke-width="1.2"
         attribute:stroke-linejoin="round"
         attribute:fill="none"
       />
-      <line
-        attribute:x1="12.5"
-        attribute:y1="11.5"
-        attribute:x2="15.5"
-        attribute:y2="11.5"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linecap="round"
+      <rect
+        attribute:style="fill:currentColor;stroke-width:1.1"
+        attribute:width="6"
+        attribute:height="1.35"
+        attribute:x="5"
+        attribute:y="9.5"
+        attribute:rx="0.6"
       />
     </svg>
   );

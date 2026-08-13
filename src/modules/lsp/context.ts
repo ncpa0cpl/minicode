@@ -1,4 +1,5 @@
 import { Compartment } from "@codemirror/state";
+import type { HighlightStyle } from "@codemirror/language";
 import { MiniCodeContext } from "../../context";
 import { MiniCodeOptions } from "../../mini-code";
 import { LspManager } from "./manager";
@@ -18,7 +19,7 @@ export class LspContext {
   }
 
   getLspExtensions(file: File) {
-    return createLspExtensions(this.lspManager, file);
+    return createLspExtensions(this.lspManager, file, this.minicode.themes.getSyntaxStyle());
   }
 
   cmReconfigure(file: File) {

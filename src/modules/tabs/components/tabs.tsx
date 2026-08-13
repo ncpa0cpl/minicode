@@ -132,6 +132,7 @@ const TabsStyles = css`
       position: absolute;
       inset: 0;
       overflow: hidden;
+      container: codemirror / inline-size;
 
       &.focused {
         display: block;
