@@ -1,10 +1,10 @@
 import { css } from "embedcss";
 import { MiniCodeContext } from "../../../context";
-import { basicSetup, EditorView } from "codemirror";
 import { bindSignal, Range } from "@ncpa0cpl/vanilla-jsx";
 import { TabData } from "../types";
 import { useTabsContextMenu } from "./context-menu";
 import { ContextMenu } from "../../../components/context-menu/context-menu";
+import { CmEditor } from "../../../utils/cm-ext";
 const List = Range;
 
 function closeIcon() {
@@ -222,21 +222,21 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
       {tabBar}
       <List data={ctx.tabs.data} into={tabEditor}>
         {(t: TabData) => {
-          t.view ??= new EditorView({
-            doc: t.initialContent,
-            root: ctx.shadowRoot,
-            extensions: [
-              basicSetup,
-              EditorView.updateListener.of((u) => {
-                if (u.docChanged) {
-                  t.dirty.dispatch(u.state.doc.toString() !== t.savedContent);
-                }
-              }),
-              ...ctx.cmLanguageExtensions(t.file),
-              ...ctx.lsp.cmExtensions(t.file),
-              ...ctx.themes.cmExtensions(),
-            ],
-          });
+          if (!t.view) {
+            const cm = new CmEditor(
+              ctx.shadowRoot,
+              t.initialContent,
+              (docStr) => {
+                t.dirty.dispatch(docStr !== t.savedContent);
+              },
+              8,
+            );
+
+            t.cme = cm;
+            t.view = cm.editor();
+
+            ctx.registerPlugins(cm, t.file);
+          }
 
           return (
             <div

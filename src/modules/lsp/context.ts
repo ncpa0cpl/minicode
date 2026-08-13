@@ -1,32 +1,32 @@
-import { Compartment } from "@codemirror/state";
-import type { HighlightStyle } from "@codemirror/language";
 import { MiniCodeContext } from "../../context";
 import { MiniCodeOptions } from "../../mini-code";
 import { LspManager } from "./manager";
 import { toUri } from "./types";
 import { createLspExtensions } from "./extensions";
 import { File } from "../../files";
+import { CmEditor } from "../../utils/cm-ext";
 
 export class LspContext {
-  private lspCompartment = new Compartment();
   private lspManager: LspManager;
 
   constructor(
     private readonly minicode: MiniCodeContext,
     opts: MiniCodeOptions,
   ) {
-    this.lspManager = new LspManager(opts.lsp ?? {}, toUri(opts.root), minicode.logs);
+    this.lspManager = new LspManager(minicode.languageConfigs, toUri(opts.root), minicode.logs);
   }
 
-  getLspExtensions(file: File) {
-    return createLspExtensions(this.lspManager, file, this.minicode.themes.getSyntaxStyle());
+  registerPlugins(cm: CmEditor, file: File) {
+    const lspPlugin = cm.addPlugin("lsp");
+    lspPlugin.replace(
+      ...createLspExtensions(this.lspManager, file, () => this.minicode.themes.getSyntaxStyle()),
+    );
   }
 
-  cmReconfigure(file: File) {
-    return this.lspCompartment.reconfigure(this.getLspExtensions(file));
-  }
-
-  cmExtensions(file: File) {
-    return [this.lspCompartment.of(this.getLspExtensions(file))];
+  updatePlugins(cm: CmEditor, file: File) {
+    const lspPlugin = cm.getOrAddPlugin("lsp");
+    lspPlugin.replace(
+      ...createLspExtensions(this.lspManager, file, () => this.minicode.themes.getSyntaxStyle()),
+    );
   }
 }

@@ -46,7 +46,9 @@ export interface LspTransportContext {
   rootUri: string;
 }
 
-export type LspTransportFactory = (ctx: LspTransportContext) => LspTransport;
+export type LspTransportFactory =
+  | ((ctx: LspTransportContext) => LspTransport)
+  | ((ctx: LspTransportContext) => Promise<LspTransport>);
 
 /* LSP position types */
 

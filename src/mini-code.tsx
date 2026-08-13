@@ -6,11 +6,12 @@ import { TopBar } from "./components/topbar/topbar";
 import { MiniCodeContext } from "./context";
 import { stylesheet } from "./styles";
 import { css } from "embedcss";
-import type { LanguagesConfig } from "./languages";
+import type { LanguageSpec } from "./languages";
 import type { HighlightStyle } from "@codemirror/language";
 import { TerminalFactory } from "./modules/terminal/types";
-import { LspFactoryConfig } from "./modules/lsp/manager";
 import { Theme, ThemeInput, themeToCssVars } from "./modules/theme/themes";
+import { LspTransportFactory } from "./modules/lsp/types";
+import { FormatterFactory } from "./modules/formatter/types";
 
 export type Dirent = {
   isDirectory(): boolean;
@@ -47,14 +48,30 @@ export type Storage = {
   removeItem(key: string): void;
 };
 
+export type LanguageConfig = {
+  /**
+   * List of extensions this config applies to. If multiple
+   * configs specify the same extension, the last one wins.
+   *
+   * @example ext: [".js", ".jsx", ".ts", ".tsx"]
+   */
+  ext: string[];
+  /** Codemirror extension for providing the syntax support. */
+  spec?: LanguageSpec;
+  /** Language servers to be used for this language. */
+  lsp?: LspTransportFactory[];
+  /** Function that can be used to format this language code. */
+  fromatter?: FormatterFactory;
+  formatOnSave?: boolean;
+};
+
 export type MiniCodeOptions = {
   root: string;
   filesystem: Filesystem;
   theme?: ThemeInput;
   themes?: Theme[];
   syntaxTheme?: HighlightStyle;
-  languages?: LanguagesConfig;
-  lsp?: LspFactoryConfig;
+  languages?: LanguageConfig[];
   terminal?: TerminalFactory;
   storage?: Storage;
 };

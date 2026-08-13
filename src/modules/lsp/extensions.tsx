@@ -45,7 +45,7 @@ const trustHtml = trustHtmlFactory();
 export function createLspExtensions(
   manager: LspManager,
   file: File,
-  highlightStyle?: HighlightStyle,
+  getStyle: () => HighlightStyle | undefined,
 ): Extension[] {
   const ext = file.ext;
   if (!ext || !manager.hasLsp(ext)) return [];
@@ -60,7 +60,7 @@ export function createLspExtensions(
         },
       ],
     }),
-    hoverTooltip((view, pos, _side) => lspHoverTooltip(manager, file, view, pos, highlightStyle), {
+    hoverTooltip((view, pos, _side) => lspHoverTooltip(manager, file, view, pos, getStyle), {
       hideOnChange: true,
     }),
   ];
@@ -169,7 +169,7 @@ async function lspHoverTooltip(
   file: File,
   view: EditorView,
   pos: number,
-  highlightStyle?: HighlightStyle,
+  getStyle: () => HighlightStyle | undefined,
 ): Promise<Tooltip | null> {
   const result = await manager.hover(file.ext!, file.path, pos, view.state.doc);
   if (!result) return null;
@@ -187,7 +187,7 @@ async function lspHoverTooltip(
     create() {
       const dom = document.createElement("div");
       dom.className = "cm-lsp-hover";
-      renderHoverContent(dom, displayText, highlightStyle);
+      renderHoverContent(dom, displayText, getStyle());
       if (truncated) {
         const more = (
           <div

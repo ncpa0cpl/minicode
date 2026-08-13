@@ -12,8 +12,9 @@ import {
   ThemeInput,
   type HighlightStyle,
 } from "./themes";
-import { Compartment } from "@codemirror/state";
 import { localSig } from "../../utils/local-signal";
+import { CmEditor } from "../../utils/cm-ext";
+import { File } from "../../files";
 
 export class ThemesContext {
   themeName: Signal<string>;
@@ -21,8 +22,6 @@ export class ThemesContext {
   available: Theme[] = [];
 
   private syntaxTheme: HighlightStyle | undefined;
-  private themeCompartment = new Compartment();
-  private syntaxCompartment = new Compartment();
 
   constructor(
     private readonly minicode: MiniCodeContext,
@@ -44,6 +43,16 @@ export class ThemesContext {
     if (!this.available.some((t) => t.name === this.theme.get().name)) {
       this.available.unshift(this.theme.get());
     }
+  }
+
+  registerPlugins(cm: CmEditor, file: File) {
+    const lspPlugin = cm.addPlugin("theme");
+    lspPlugin.replace(this.getSyntaxExtension(), defineCodeMirrorTheme(this.theme.get()));
+  }
+
+  updatePlugins(cm: CmEditor, file: File) {
+    const lspPlugin = cm.getOrAddPlugin("theme");
+    lspPlugin.replace(this.getSyntaxExtension(), defineCodeMirrorTheme(this.theme.get()));
   }
 
   private resolveTheme(name?: string | Theme | null) {
@@ -82,19 +91,5 @@ export class ThemesContext {
   getSyntaxStyle(): HighlightStyle | undefined {
     const theme = this.theme.get();
     return this.syntaxTheme ?? theme.syntax;
-  }
-
-  cmExtensions() {
-    return [
-      this.syntaxCompartment.of(this.getSyntaxExtension()),
-      this.themeCompartment.of(defineCodeMirrorTheme(this.theme.get())),
-    ];
-  }
-
-  cmExtensionsReconfigure() {
-    return [
-      this.syntaxCompartment.reconfigure(this.getSyntaxExtension()),
-      this.themeCompartment.reconfigure(defineCodeMirrorTheme(this.theme.get())),
-    ];
   }
 }

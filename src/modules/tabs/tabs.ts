@@ -154,9 +154,9 @@ export class TabsContext {
 
   updateTheme() {
     for (const tab of this.data.get()) {
-      tab.view?.dispatch({
-        effects: this.minicode.themes.cmExtensionsReconfigure(),
-      });
+      if (tab.cme) {
+        this.minicode.themes.updatePlugins(tab.cme, tab.file);
+      }
     }
   }
 
@@ -239,12 +239,9 @@ export class TabsContext {
         file: newFile,
       };
 
-      tabs[idx]!.view?.dispatch({
-        effects: [
-          this.minicode.cmLanguageReconfigure(newFile),
-          this.minicode.lsp.cmReconfigure(newFile),
-        ],
-      });
+      if (tabs[idx]!.cme) {
+        this.minicode.updatePlugins(tabs[idx]!.cme, newFile);
+      }
 
       return tabs;
     });

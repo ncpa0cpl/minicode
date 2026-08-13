@@ -18,6 +18,7 @@ import type {
 } from "./types";
 import { toUri as toUriFn } from "./types";
 import type { LogContext } from "../log/log";
+import { LanguageConfig } from "../../mini-code";
 
 interface OpenDoc {
   version: number;
@@ -25,10 +26,22 @@ interface OpenDoc {
   ext: string;
 }
 
-interface LspEntry {
-  client: LspClient;
-  initialized: Promise<void>;
-}
+type LspEntry =
+  | {
+      initialized: boolean;
+      client: LspClient | null;
+      awaiter: Promise<void>;
+    }
+  | {
+      initialized: true;
+      client: LspClient;
+      awaiter: Promise<void>;
+    }
+  | {
+      initialized: false;
+      client: null;
+      awaiter: Promise<void>;
+    };
 
 export type LspFactoryConfig = Record<string, LspTransportFactory | LspTransportFactory[]>;
 
@@ -53,14 +66,15 @@ export class LspManager {
   private diagnosticsByUri = new Map<string, Map<LspClient, Diagnostic[]>>();
 
   constructor(
-    private factories: LspFactoryConfig,
+    private factories: Record<string, LanguageConfig>,
     private rootUri: string,
     private logs?: LogContext,
   ) {}
 
   hasLsp(ext: string | undefined): boolean {
     if (!ext) return false;
-    return "." + ext in this.factories;
+    const config = this.factories["." + ext];
+    return config?.lsp != null;
   }
 
   private getEntries(ext: string): LspEntry[] {
@@ -68,23 +82,29 @@ export class LspManager {
     let entries = this.clients.get(key);
     if (entries) return entries;
 
-    const factory = this.factories[key];
-    if (!factory) return [];
+    const config = this.factories[key];
+    if (!config) return [];
 
-    const factoryList = Array.isArray(factory) ? factory : [factory];
     this.logs?.info(`Creating LSP client(s) for "${key}"`);
-    entries = factoryList
-      .map((f, i) => {
+    entries = config.lsp!.map((f, i): LspEntry => {
+      const result: LspEntry = {
+        client: null as null | LspClient,
+        awaiter: null as any as Promise<void>,
+        initialized: false,
+      };
+      result.awaiter = (async () => {
         try {
-          const transport = f({ rootUri: this.rootUri });
+          const transport = await f({ rootUri: this.rootUri });
           const client = new LspClient(transport);
-          const initialized = this.initializeClient(client, ext, i);
-          return { client, initialized };
+          await this.initializeClient(client, ext, i);
+          result.client = client;
+          result.initialized = true;
         } catch (err) {
           this.logs?.error("Failed to initialize LSP", err);
         }
-      })
-      .filter((v) => !!v);
+      })();
+      return result;
+    });
     this.clients.set(key, entries);
     return entries;
   }
@@ -148,7 +168,7 @@ export class LspManager {
     this.logs?.debug(`LSP open document "${filePath}" (${ext})`);
 
     try {
-      await Promise.all(entries.map((e) => e.initialized));
+      await Promise.all(entries.map((e) => e.awaiter));
     } catch (err) {
       this.logs?.warn(`LSP not ready for ".${ext}" (${filePath})`, err);
     }
@@ -162,6 +182,8 @@ export class LspManager {
       },
     };
     for (const entry of entries) {
+      if (!entry.client) continue;
+
       try {
         entry.client.notify("textDocument/didOpen", params);
         // Pull diagnostics — the TS Go LSP may not push them on open
@@ -208,6 +230,8 @@ export class LspManager {
       contentChanges: [{ text: content }],
     };
     for (const entry of entries) {
+      if (!entry.client) continue;
+
       try {
         entry.client.notify("textDocument/didChange", params);
         this.requestDiagnostics(entry.client, uri).catch(() => {});
@@ -233,6 +257,8 @@ export class LspManager {
       textDocument: { uri },
     };
     for (const entry of entries) {
+      if (!entry.client) continue;
+
       try {
         entry.client.notify("textDocument/didClose", params);
       } catch (err) {
@@ -250,13 +276,15 @@ export class LspManager {
     const entries = this.getEntries(ext);
     if (entries.length === 0) return null;
 
-    await Promise.all(entries.map((e) => e.initialized));
+    await Promise.all(entries.map((e) => e.awaiter));
 
     const lspPos = cmToLspPos(doc, pos);
     const uri = toUriFn(filePath);
 
     const results = await Promise.all(
       entries.map(async (entry) => {
+        if (!entry.client) return null;
+
         try {
           const result = await entry.client.request<CompletionList | CompletionItem[]>(
             "textDocument/completion",
@@ -289,13 +317,15 @@ export class LspManager {
     const entries = this.getEntries(ext);
     if (entries.length === 0) return null;
 
-    await Promise.all(entries.map((e) => e.initialized));
+    await Promise.all(entries.map((e) => e.awaiter));
 
     const lspPos = cmToLspPos(doc, pos);
     const uri = toUriFn(filePath);
 
     const results = await Promise.all(
       entries.map(async (entry) => {
+        if (!entry.client) return null;
+
         try {
           return await entry.client.request<Hover | null>("textDocument/hover", {
             textDocument: { uri },
@@ -358,6 +388,7 @@ export class LspManager {
     this.logs?.debug("LSP manager disposing");
     for (const [, entries] of this.clients) {
       for (const entry of entries) {
+        if (!entry.client) continue;
         entry.client.dispose();
       }
     }

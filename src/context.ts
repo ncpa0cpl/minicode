@@ -1,15 +1,21 @@
 import { sig, type Signal } from "@ncpa0cpl/vanilla-jsx/signals";
-import { Compartment } from "@codemirror/state";
+import { Compartment, Extension } from "@codemirror/state";
 import { File } from "./files";
-import { Filesystem, MiniCodeOptions, type Dirent, type Storage } from "./mini-code";
+import {
+  Filesystem,
+  LanguageConfig,
+  MiniCodeOptions,
+  type Dirent,
+  type Storage,
+} from "./mini-code";
 import { Path } from "./utils/path";
-import { resolveLanguageExtension, type LanguagesConfig } from "./languages";
 import { TerminalsContext } from "./modules/terminal/terminals";
 import { TabsContext } from "./modules/tabs/tabs";
 import { LspContext } from "./modules/lsp/context";
 import { ThemesContext } from "./modules/theme/theme";
 import { LogContext } from "./modules/log/log";
 import { localSig } from "./utils/local-signal";
+import { CmEditor, CmPlugin } from "./utils/cm-ext";
 
 export class MiniCodeContext {
   static storageKeys = {
@@ -23,7 +29,6 @@ export class MiniCodeContext {
   filesystem: Filesystem;
   abort = new AbortController();
   shadowRoot!: ShadowRoot;
-  private languages: LanguagesConfig | undefined;
   private languageCompartment = new Compartment();
   private dirIndex = new Map<string, File>();
   fileTreeWidth: Signal<number>;
@@ -34,9 +39,12 @@ export class MiniCodeContext {
   lsp: LspContext;
   logs: LogContext;
 
+  languageConfigs: Record<string, LanguageConfig> = {};
+
   constructor(private opts: MiniCodeOptions) {
+    this.mapLangConfigs(opts.languages ?? []);
+
     this.filesystem = opts.filesystem;
-    this.languages = opts.languages;
     this.storage = opts.storage ?? localStorage;
 
     this.logs = new LogContext(this, opts);
@@ -48,16 +56,74 @@ export class MiniCodeContext {
     this.fileTreeWidth = localSig(this.storage, MiniCodeContext.storageKeys.fileTreeWidth, 360);
   }
 
+  private mapLangConfigs(configs: LanguageConfig[]) {
+    for (const conf of configs) {
+      for (const ext of conf.ext) {
+        this.languageConfigs[ext] = conf;
+        if (ext.startsWith(".")) {
+          this.languageConfigs[ext.substring(1)] = conf;
+        } else {
+          this.languageConfigs["." + ext] = conf;
+        }
+      }
+    }
+  }
+
+  private specCache = new WeakMap<Function, Extension | Promise<Extension>>();
   getLanguageExtensions(file: File) {
-    return resolveLanguageExtension(this.languages, file.ext);
+    if (!file.ext) return undefined;
+
+    const config = this.languageConfigs[file.ext];
+    if (!config || !config.spec) return undefined;
+
+    if (typeof config.spec === "function") {
+      const cached = this.specCache.get(config.spec);
+      if (cached) {
+        return cached;
+      }
+      const s = config.spec();
+      this.specCache.set(config.spec, s);
+      return s;
+    }
+
+    return config.spec;
   }
 
-  cmLanguageExtensions(file: File) {
-    return [this.languageCompartment.of(this.getLanguageExtensions(file))];
+  registerPlugins(cm: CmEditor, file: File) {
+    const specPlugin = cm.addPlugin("syntax-spec");
+    this.updateLangSpecPlugin(file, specPlugin);
+
+    this.lsp.registerPlugins(cm, file);
+    this.themes.registerPlugins(cm, file);
   }
 
-  cmLanguageReconfigure(file: File) {
-    return this.languageCompartment.reconfigure(this.getLanguageExtensions(file));
+  updatePlugins(cm: CmEditor, file: File) {
+    const specPlugin = cm.getOrAddPlugin("syntax-spec");
+    this.updateLangSpecPlugin(file, specPlugin);
+
+    this.lsp.updatePlugins(cm, file);
+    this.themes.updatePlugins(cm, file);
+  }
+
+  private updateLangSpecPlugin(file: File, plugin: CmPlugin) {
+    const cmExt = this.getLanguageExtensions(file);
+    if (cmExt && !(cmExt instanceof Promise)) {
+      plugin.replace(cmExt);
+      return;
+    }
+
+    // remove the current ext
+    plugin.replace();
+
+    if (cmExt) {
+      cmExt
+        .then((cmExt) => {
+          plugin.replace(cmExt);
+        })
+        .catch((err) => {
+          this.logs.error("Failed to load the language extension", err);
+        });
+    }
   }
 
   async load() {
