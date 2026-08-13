@@ -4,6 +4,8 @@ import { MiniCodeOptions } from "../../mini-code";
 import { TabData } from "./types";
 import { File } from "../../files";
 import { Path } from "../../utils/path";
+import { EditorView } from "codemirror";
+import { EditorSelection } from "@codemirror/state";
 
 export class TabsContext {
   data = sig<TabData[]>([]);
@@ -158,6 +160,35 @@ export class TabsContext {
     }
   }
 
+  private replaceEditorText(view: EditorView, contents: string) {
+    const oldState = view.state;
+    const oldDoc = oldState.doc;
+
+    const scrollTop = view.scrollDOM.scrollTop;
+    const scrollLeft = view.scrollDOM.scrollLeft;
+
+    // Preserve cursor by line/column
+    const mainRange = oldState.selection.main;
+    const oldLine = oldDoc.lineAt(mainRange.head);
+    const col = mainRange.head - oldLine.from;
+
+    view.dispatch({
+      changes: { from: 0, to: oldDoc.length, insert: contents },
+    });
+
+    const newDoc = view.state.doc;
+    const lineNumber = Math.min(oldLine.number, newDoc.lines);
+    const newLine = newDoc.line(lineNumber);
+    const newPos = Math.min(newLine.from + col, newLine.to);
+
+    view.dispatch({
+      selection: EditorSelection.cursor(newPos),
+    });
+
+    view.scrollDOM.scrollTop = scrollTop;
+    view.scrollDOM.scrollLeft = scrollLeft;
+  }
+
   async refreshFile(filePath: string) {
     const tab = this.data.get().find((t) => t.file.eq(filePath));
     if (!tab || !tab.view || tab.dirty.get()) return;
@@ -166,9 +197,9 @@ export class TabsContext {
       const fs = this.minicode.filesystem;
       const content = await fs.readFile(filePath, "utf-8");
       if (content === tab.view.state.doc.toString()) return;
-      tab.view.dispatch({
-        changes: { from: 0, to: tab.view.state.doc.length, insert: content },
-      });
+
+      this.replaceEditorText(tab.view, content);
+
       tab.savedContent = content;
       tab.initialContent = content;
       tab.dirty.dispatch(false);
