@@ -1,5 +1,6 @@
 {
-  "name": "minicode",
+  "name": "@ncpa0cpl/minicode",
+  "version": "0.0.1-beta.0",
   "files": [
     "dist",
     "package.json",

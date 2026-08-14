@@ -7,7 +7,7 @@ A minimal IDE for the Web.
 ## Basic usage
 
 ```ts
-import { MiniCode } from "minicode";
+import { MiniCode } from "@ncpa0cpl/minicode";
 import { filesystem } from "./filesystem-api";
 
 const minicode = MiniCode({
