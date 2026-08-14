@@ -149,6 +149,19 @@ export class TabsContext {
     this.focusNext(focusedIdx);
   }
 
+  async formatContent(file: File) {
+    const tab = this.data.get().find((t) => t.file.eq(file));
+    if (!tab || !tab.view) {
+      return;
+    }
+    try {
+      let content = tab.view.state.doc.toString();
+      await this.minicode.formatter.format(tab.view, tab.file, content);
+    } catch (err) {
+      this.minicode.logs.error(`Failed to format file "${tab.file.path}"`, err);
+    }
+  }
+
   async saveAndCloseAll() {
     const focusedIdx = this.focusedIdx;
     const fs = this.minicode.filesystem;
@@ -158,7 +171,9 @@ export class TabsContext {
       if (tab.dirty.get() && tab.view) {
         try {
           let content = tab.view.state.doc.toString();
-          content = await this.minicode.formatter.format(tab.view, tab.file, content);
+          if (this.minicode.formatter.formatsOnSave(tab.file)) {
+            content = await this.minicode.formatter.format(tab.view, tab.file, content);
+          }
           this.minicode.logs.debug(`Saving file "${tab.file.path}" (${content.length} bytes)`);
           await fs.writeFile(tab.file.path, content);
         } catch (err) {
@@ -179,7 +194,9 @@ export class TabsContext {
     try {
       const fs = this.minicode.filesystem;
       let content = tab.view.state.doc.toString();
-      content = await this.minicode.formatter.format(tab.view, file, content);
+      if (this.minicode.formatter.formatsOnSave(file)) {
+        content = await this.minicode.formatter.format(tab.view, file, content);
+      }
       this.minicode.logs.debug(`Saving file "${file.path}" (${content.length} bytes)`);
       await fs.writeFile(file.path, content);
       tab.savedContent = content;

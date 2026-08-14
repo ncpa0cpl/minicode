@@ -15,6 +15,14 @@ export function useTabsContextMenu(ctx: MiniCodeContext) {
   const buildMenuItems = (tab: TabData): MenuItem[] => {
     const items: MenuItem[] = [];
 
+    if (ctx.formatter.canFormat(tab.file)) {
+      items.push({
+        label: "Format",
+        action: () => {
+          ctx.tabs.formatContent(tab.file);
+        },
+      });
+    }
     items.push({
       label: "Close",
       action: () => {

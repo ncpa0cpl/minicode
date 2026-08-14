@@ -41,6 +41,24 @@ export class FormatterContext {
     }
   }
 
+  formatsOnSave(file: File) {
+    if (!file.ext) return false;
+
+    const config = this.minicode.languageConfigs[file.ext];
+    if (!config || !config.fromatter) return false;
+
+    return config.formatOnSave;
+  }
+
+  canFormat(file: File) {
+    if (!file.ext) return false;
+
+    const config = this.minicode.languageConfigs[file.ext];
+    if (!config || !config.fromatter) return false;
+
+    return true;
+  }
+
   async format(editor: EditorView, file: File, content: string) {
     const fmt = await this.getFormatter(file);
     if (!fmt) return content;
