@@ -193,6 +193,12 @@ export function MiniCode(opts: MiniCodeOptions) {
       if (ft) {
         ctx.tabs.save(ft);
       }
+    } else if (e.key === "f" && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      const ft = ctx.tabs.focused.get();
+      if (ft && ctx.formatter.canFormat(ft)) {
+        ctx.tabs.formatContent(ft);
+      }
     }
   };
 
