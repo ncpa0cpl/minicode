@@ -2,6 +2,8 @@
 
 A minimal IDE for the Web.
 
+![Minicode](readme_assets/minicode.png)
+
 ## Basic usage
 
 ```ts
