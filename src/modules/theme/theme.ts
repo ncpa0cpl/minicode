@@ -72,7 +72,7 @@ export class ThemesContext {
     this.addThemeIfNotExist(theme);
     theme = this.resolveTheme(theme);
     this.themeName.dispatch(theme.name);
-    this.minicode.logs.info(`Theme set to "${theme.name}"`);
+    this.minicode.logs.debug(`Theme set to "${theme.name}"`);
     this.minicode.tabs.updateTheme();
     this.minicode.terminals.updateTheme();
   }

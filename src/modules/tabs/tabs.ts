@@ -41,7 +41,7 @@ export class TabsContext {
       return tab;
     }
 
-    this.minicode.logs.info(`Opening file "${file.path}"`);
+    this.minicode.logs.debug(`Opening file "${file.path}"`);
     return fs
       .readFile(file.path, "utf-8")
       .then((content) => {
@@ -81,7 +81,7 @@ export class TabsContext {
         return;
       }
     }
-    this.minicode.logs.info(`Closing tab "${file.path}"`);
+    this.minicode.logs.debug(`Closing tab "${file.path}"`);
     this.data.dispatch((prev) => prev.filter((t) => !t.file.eq(file)));
     this.focusNext(focusedIdx);
   }
@@ -155,7 +155,7 @@ export class TabsContext {
     try {
       const fs = this.minicode.filesystem;
       const content = tab.view.state.doc.toString();
-      this.minicode.logs.info(`Saving file "${file.path}" (${content.length} bytes)`);
+      this.minicode.logs.debug(`Saving file "${file.path}" (${content.length} bytes)`);
       await fs.writeFile(file.path, content);
       tab.savedContent = content;
       tab.dirty.dispatch(false);
