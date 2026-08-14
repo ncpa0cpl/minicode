@@ -1,3 +1,4 @@
+import { EditorView } from "codemirror";
 import { MiniCodeContext } from "../../context";
 import { MiniCodeOptions } from "../../mini-code";
 import { LspManager } from "./manager";
@@ -13,7 +14,12 @@ export class LspContext {
     private readonly minicode: MiniCodeContext,
     opts: MiniCodeOptions,
   ) {
-    this.lspManager = new LspManager(minicode.languageConfigs, toUri(opts.root), minicode.logs);
+    this.lspManager = new LspManager(
+      minicode.languageConfigs,
+      toUri(opts.root),
+      (uri) => this.displayFile(uri),
+      minicode.logs,
+    );
   }
 
   registerPlugins(cm: CmEditor, file: File) {
@@ -29,4 +35,42 @@ export class LspContext {
       ...createLspExtensions(this.lspManager, file, () => this.minicode.themes.getSyntaxStyle()),
     );
   }
+
+  /**
+   * Opens (or focuses) the tab for the given `file://` URI and resolves with
+   * its editor view. Used by the LSP workspace to support cross-file
+   * navigation such as go-to-definition and find-references.
+   */
+  private async displayFile(uri: string): Promise<EditorView | null> {
+    const path = uriToPath(uri);
+    if (path === null) return null;
+
+    const file = this.minicode.findFile(path);
+    if (!file) {
+      this.minicode.logs.warn("LSP attempted to open an unknown file:", path);
+      return null;
+    }
+
+    const tab = await this.minicode.tabs.open(file);
+    if (!tab) return null;
+
+    // The editor view is assigned in the tab's render callback, which runs
+    // asynchronously after the tab data is dispatched. Poll until it's set.
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (tab.view) return tab.view;
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    return tab.view ?? null;
+  }
+
+  /** Forward a filesystem change event to the LSP manager. */
+  onFileChange(relPath: string, eventType: string): void {
+    this.lspManager.onFileChange(relPath, eventType);
+  }
+}
+
+function uriToPath(uri: string): string | null {
+  if (!uri.startsWith("file://")) return null;
+  return uri.slice("file://".length);
 }

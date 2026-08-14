@@ -149,6 +149,8 @@ export class MiniCodeContext {
           } else if (event.eventType === "change") {
             await this.tabs.refreshFile(fullPath.toString());
           }
+
+          this.lsp.onFileChange(event.filename, event.eventType);
         }
       } catch (err) {
         if (Error.isError(err) && err.name === "AbortError") {
@@ -256,7 +258,7 @@ export class MiniCodeContext {
     }
   }
 
-  private findFile(path: string | Path) {
+  findFile(path: string | Path) {
     path = Path.from(path);
 
     let searchFile = this.root;

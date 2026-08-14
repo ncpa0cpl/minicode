@@ -32,24 +32,36 @@ export class TabsContext {
     if (ft) this.focused.dispatch(ft.file);
   }
 
-  open(file: File) {
+  open(file: File): TabData | Promise<TabData | null> {
     const fs = this.minicode.filesystem;
 
-    if (this.data.get().some((t) => t.file.eq(file))) {
+    const tab = this.data.get().find((t) => t.file.eq(file));
+    if (tab) {
       this.focused.dispatch(file);
-      return;
+      return tab;
     }
+
     this.minicode.logs.info(`Opening file "${file.path}"`);
-    fs.readFile(file.path, "utf-8")
+    return fs
+      .readFile(file.path, "utf-8")
       .then((content) => {
-        this.data.dispatch((prev) => [
-          ...prev,
-          { file, initialContent: content, savedContent: content, dirty: sig(false) },
-        ]);
+        let newTab: TabData = {
+          file,
+          initialContent: content,
+          savedContent: content,
+          dirty: sig(false),
+        };
+
+        this.data.dispatch((prev) => {
+          return [...prev, newTab];
+        });
         this.focused.dispatch(file);
+
+        return newTab;
       })
       .catch((err) => {
         this.minicode.logs.error(`Failed to open file "${file.path}"`, err);
+        return null;
       });
   }
 

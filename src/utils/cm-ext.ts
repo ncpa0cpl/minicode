@@ -124,12 +124,6 @@ export class CmEditor {
         key: "End",
         run: cursorDocEnd,
       },
-      {
-        key: "F2",
-        run(target) {
-          return true;
-        },
-      },
     ];
     const customKeymapsKeys = new Set(customKeymaps.map((e) => e.key));
     const defaultKeymaps = standardKeymap.filter((km) => {

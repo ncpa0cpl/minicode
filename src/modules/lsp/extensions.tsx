@@ -1,5 +1,5 @@
-import type { EditorView, PluginValue, Tooltip, ViewUpdate } from "@codemirror/view";
-import { ViewPlugin, hoverTooltip } from "@codemirror/view";
+import { ViewPlugin, hoverTooltip, keymap, EditorView } from "@codemirror/view";
+import type { PluginValue, Tooltip, ViewUpdate } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import type { HighlightStyle } from "@codemirror/language";
 import {
@@ -8,39 +8,22 @@ import {
   type CompletionContext,
   type CompletionResult,
 } from "@codemirror/autocomplete";
+import {
+  hoverTooltips,
+  signatureHelp,
+  formatKeymap,
+  renameKeymap,
+  jumpToDefinition,
+  jumpToDefinitionKeymap,
+  findReferencesKeymap,
+} from "@codemirror/lsp-client";
 import type { LspManager } from "./manager";
+import { languageIdForExt } from "./manager";
 import type { CompletionItem, Hover, MarkupContent } from "./types";
+import { toUri } from "./types";
 import { File } from "../../files";
 import { highlightCodeToHtml, prettifyErrorMessage } from "./highlight";
-
-declare class TrustedHTML {}
-
-type HTMLTrustPolicy = {
-  createHTML(html: string): string & TrustedHTML;
-};
-
-declare const trustedTypes:
-  | undefined
-  | {
-      createPolicy(
-        name: string,
-        opts: {
-          createHTML: (str: string) => string;
-        },
-      ): HTMLTrustPolicy;
-    };
-
-function trustHtmlFactory() {
-  if (typeof trustedTypes === "undefined") return (html: string) => html;
-
-  const trustedHTMLPolicy = trustedTypes.createPolicy("myEscapePolicy", {
-    createHTML: (string) => string,
-  });
-
-  return (html: string) => trustedHTMLPolicy.createHTML(html);
-}
-
-const trustHtml = trustHtmlFactory();
+import { trustHtml } from "./sanitize";
 
 export function createLspExtensions(
   manager: LspManager,
@@ -50,9 +33,51 @@ export function createLspExtensions(
   const ext = file.ext;
   if (!ext || !manager.hasLsp(ext)) return [];
 
-  return [
-    // Prec.low(lintGutter()),
-    ViewPlugin.define((view) => new LspDocSyncPlugin(view, manager, file)),
+  const primary = manager.ensurePrimaryClient(ext);
+  if (!primary) return [];
+
+  const uri = toUri(file.path);
+  const languageId = languageIdForExt(ext);
+
+  const editorExt: Extension[] = [
+    // LSP plugin — must come first so its `update` accumulates unsynced
+    // changes before the doc-sync plugin below flushes them via `client.sync()`.
+    primary.plugin(uri, languageId),
+    signatureHelp(),
+    keymap.of([
+      ...formatKeymap,
+      ...renameKeymap,
+      ...jumpToDefinitionKeymap,
+      ...findReferencesKeymap,
+    ]),
+    // Ctrl+Click (Cmd+Click on macOS) jumps to the definition of the symbol
+    // under the pointer.
+    EditorView.domEventHandlers({
+      mousedown(event, view) {
+        if (!(event.ctrlKey || event.metaKey) || event.button !== 0) return false;
+        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+        if (pos == null || pos < 0) return false;
+        view.dispatch({ selection: { anchor: pos } });
+        return jumpToDefinition(view);
+      },
+      mousemove(event, view) {
+        if (!(event.ctrlKey || event.metaKey)) {
+          view.dom.style.removeProperty("cursor");
+          return false;
+        }
+        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+        if (pos == null || pos < 0) {
+          view.dom.style.removeProperty("cursor");
+          return false;
+        }
+        view.dom.style.cursor = "pointer";
+        return false;
+      },
+      mouseleave(_event, view) {
+        view.dom.style.removeProperty("cursor");
+        return false;
+      },
+    }),
     autocompletion({
       override: [
         (ctx: CompletionContext): Promise<CompletionResult | null> => {
@@ -60,10 +85,26 @@ export function createLspExtensions(
         },
       ],
     }),
-    hoverTooltip((view, pos, _side) => lspHoverTooltip(manager, file, view, pos, getStyle), {
-      hideOnChange: true,
-    }),
   ];
+
+  // Hover: minicode's custom rendering for the JS/TS family (preserves the
+  // existing look & feel + TS error prettification); the package's hover
+  // tooltips for everything else.
+  if (manager.useCustomHover(ext)) {
+    editorExt.push(
+      hoverTooltip((view, pos, _side) => lspHoverTooltip(manager, file, view, pos, getStyle), {
+        hideOnChange: true,
+      }),
+    );
+  } else {
+    editorExt.push(hoverTooltips());
+  }
+
+  // Doc sync — drives secondary clients (manual didOpen/didChange/didClose),
+  // diagnostic pulls, and flushes the primary client's unsynced changes.
+  editorExt.push(ViewPlugin.define((view) => new LspDocSyncPlugin(view, manager, file)));
+
+  return editorExt;
 }
 
 class LspDocSyncPlugin implements PluginValue {

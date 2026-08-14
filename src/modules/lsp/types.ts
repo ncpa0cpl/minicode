@@ -36,12 +36,6 @@ export interface LspTransport {
   close(): void;
 }
 
-export interface LspServerRequest {
-  method: string;
-  params?: unknown;
-  id: number | string;
-}
-
 export interface LspTransportContext {
   rootUri: string;
 }
@@ -50,6 +44,11 @@ export type LspTransportFactory =
   | ((ctx: LspTransportContext) => LspTransport)
   | ((ctx: LspTransportContext) => Promise<LspTransport>);
 
+export interface LspServerRequest {
+  method: string;
+  params?: unknown;
+  id: number | string;
+}
 /* LSP position types */
 
 export interface Position {
