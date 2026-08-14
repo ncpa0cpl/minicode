@@ -1,6 +1,14 @@
 {
   "name": "@ncpa0cpl/minicode",
   "version": "0.0.1-beta.0",
+  "keywords": [
+    "code",
+    "editor",
+    "ide",
+    "lsp",
+    "typescript",
+    "vscode"
+  ],
   "repository": {
     "url": "https://github.com/ncpa0cpl/minicode"
   },
