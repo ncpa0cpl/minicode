@@ -23,6 +23,7 @@ export type Dirent = {
 export interface Filesystem {
   readdir(path: string): Promise<string[]>;
   readdir(path: string, opts: { withFileTypes: true }): Promise<Dirent[]>;
+  readFile(path: string): Promise<Uint8Array>;
   readFile(path: string, encoding: "utf-8"): Promise<string>;
   writeFile(path: string, data: string): Promise<void>;
   unlink(path: string): Promise<void>;

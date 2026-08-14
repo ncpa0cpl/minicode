@@ -1,3 +1,6 @@
+
+
+
 import { sig, type Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { Compartment, Extension } from "@codemirror/state";
 import { File } from "./files";
@@ -16,6 +19,7 @@ import { ThemesContext } from "./modules/theme/theme";
 import { LogContext } from "./modules/log/log";
 import { localSig } from "./utils/local-signal";
 import { CmEditor, CmPlugin } from "./utils/cm-ext";
+import { FormatterContext } from "./modules/formatter/context";
 
 export class MiniCodeContext {
   static storageKeys = {
@@ -38,6 +42,7 @@ export class MiniCodeContext {
   tabs: TabsContext;
   lsp: LspContext;
   logs: LogContext;
+  formatter: FormatterContext;
 
   languageConfigs: Record<string, LanguageConfig> = {};
 
@@ -52,6 +57,7 @@ export class MiniCodeContext {
     this.tabs = new TabsContext(this, opts);
     this.lsp = new LspContext(this, opts);
     this.themes = new ThemesContext(this, opts);
+    this.formatter = new FormatterContext(this, opts);
 
     this.fileTreeWidth = localSig(this.storage, MiniCodeContext.storageKeys.fileTreeWidth, 360);
   }

@@ -7,6 +7,22 @@ import { Path } from "../../utils/path";
 import { EditorView } from "codemirror";
 import { EditorSelection } from "@codemirror/state";
 
+/**
+ * Detects whether a buffer contains binary data by checking for null bytes
+ * in the first 8 KB. Text files do not contain null bytes; binary files
+ * almost always do within the first few hundred bytes. This is the same
+ * heuristic used by gedit, VS Code, and other editors.
+ */
+const BINARY_SAMPLE_SIZE = 8192;
+
+function isBinaryBuffer(buffer: Uint8Array): boolean {
+  const len = Math.min(buffer.length, BINARY_SAMPLE_SIZE);
+  for (let i = 0; i < len; i++) {
+    if (buffer[i] === 0) return true;
+  }
+  return false;
+}
+
 export class TabsContext {
   data = sig<TabData[]>([]);
   focused = sig<File>();
@@ -32,7 +48,7 @@ export class TabsContext {
     if (ft) this.focused.dispatch(ft.file);
   }
 
-  open(file: File): TabData | Promise<TabData | null> {
+  open(file: File): TabData | Promise<TabData | null> | null {
     const fs = this.minicode.filesystem;
 
     const tab = this.data.get().find((t) => t.file.eq(file));
@@ -43,8 +59,14 @@ export class TabsContext {
 
     this.minicode.logs.debug(`Opening file "${file.path}"`);
     return fs
-      .readFile(file.path, "utf-8")
-      .then((content) => {
+      .readFile(file.path)
+      .then((buffer) => {
+        if (isBinaryBuffer(buffer)) {
+          this.minicode.logs.error(`Cannot open binary file "${file.name}"`);
+          return null;
+        }
+
+        const content = new TextDecoder().decode(buffer);
         let newTab: TabData = {
           file,
           initialContent: content,
@@ -135,7 +157,9 @@ export class TabsContext {
     for (const tab of this.data.get()) {
       if (tab.dirty.get() && tab.view) {
         try {
-          const content = tab.view.state.doc.toString();
+          let content = tab.view.state.doc.toString();
+          content = await this.minicode.formatter.format(tab.view, tab.file, content);
+          this.minicode.logs.debug(`Saving file "${tab.file.path}" (${content.length} bytes)`);
           await fs.writeFile(tab.file.path, content);
         } catch (err) {
           this.minicode.logs.error(`Failed to save file "${tab.file.path}"`, err);
@@ -154,7 +178,8 @@ export class TabsContext {
     }
     try {
       const fs = this.minicode.filesystem;
-      const content = tab.view.state.doc.toString();
+      let content = tab.view.state.doc.toString();
+      content = await this.minicode.formatter.format(tab.view, file, content);
       this.minicode.logs.debug(`Saving file "${file.path}" (${content.length} bytes)`);
       await fs.writeFile(file.path, content);
       tab.savedContent = content;
@@ -172,7 +197,7 @@ export class TabsContext {
     }
   }
 
-  private replaceEditorText(view: EditorView, contents: string) {
+  replaceEditorText(view: EditorView, contents: string) {
     const oldState = view.state;
     const oldDoc = oldState.doc;
 
