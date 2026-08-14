@@ -1,6 +1,9 @@
 {
   "name": "@ncpa0cpl/minicode",
   "version": "0.0.1-beta.0",
+  "repository": {
+    "url": "https://github.com/ncpa0cpl/minicode"
+  },
   "files": [
     "dist",
     "package.json",
