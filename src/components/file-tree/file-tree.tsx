@@ -196,6 +196,33 @@ const FileTreeStyles = css`
       background: var(--minicode-accent, #4b9fff);
     }
   }
+
+  .tree-loading-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 0;
+    color: var(--minicode-muted, #6b7280);
+    font-size: 12px;
+    user-select: none;
+  }
+
+  .tree-loading-spinner {
+    flex: 0 0 12px;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--minicode-border, #2a2f3a);
+    border-top-color: var(--minicode-accent, #4b9fff);
+    border-radius: 50%;
+    animation: tree-spin 0.6s linear infinite;
+  }
+
+  @keyframes tree-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `;
 
 export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
@@ -227,7 +254,7 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
 
   return (
     <div class={FileTreeStyles} style={{ width: width, display: "flex", flexDirection: "row" }}>
-      <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, null, false)}>
+      <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, null)}>
         <div class="project-header">
           <span class="project-name">{ctx.root.name}</span>
           <button
@@ -289,7 +316,7 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
   );
 }
 
-type ContextMenuHandler = (e: MouseEvent, targetPath: string | null, isDir: boolean) => void;
+type ContextMenuHandler = (e: MouseEvent, target: File | null) => void;
 
 function FileTreeDirectory(props: {
   ctx: MiniCodeContext;
@@ -309,7 +336,7 @@ function FileTreeDirectory(props: {
         class={{ row: true, dir: true, expanded }}
         style={{ "--level": level }}
         onclick={toggle}
-        oncontextmenu={(e: MouseEvent) => onContextMenu(e, dir.path, true)}
+        oncontextmenu={(e: MouseEvent) => onContextMenu(e, dir)}
       >
         <span class="chevron">
           <ChevronIcon />
@@ -330,6 +357,14 @@ function FileTreeDirectory(props: {
         </span>
       </button>
       <div class={{ dirfiles: true, collapsed: expanded.derive((e) => !e) }}>
+        {dir.isLoading.derive((l) =>
+          l && !dir.isLoaded ? (
+            <div class="tree-loading-row" style={{ "--level": level + 1 }}>
+              <span class="tree-loading-spinner"></span>
+              <span>Loading…</span>
+            </div>
+          ) : null,
+        )}
         {dir.files().$map((f) => {
           return (
             <div>
@@ -377,7 +412,7 @@ function FileTreeFile(props: {
       class={{ row: true, active }}
       style={{ "--level": level }}
       onclick={() => ctx.tabs.open(file)}
-      oncontextmenu={(e: MouseEvent) => onContextMenu(e, file.path, false)}
+      oncontextmenu={(e: MouseEvent) => onContextMenu(e, file)}
     >
       <span class="icon">
         <FileIcon ctx={ctx} ext={file.ext} />

@@ -45,7 +45,7 @@ export class LspContext {
     const path = uriToPath(uri);
     if (path === null) return null;
 
-    const file = this.minicode.findFile(path);
+    const file = await this.minicode.findFile(path);
     if (!file) {
       this.minicode.logs.warn("LSP attempted to open an unknown file:", path);
       return null;

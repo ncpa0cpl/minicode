@@ -1,6 +1,3 @@
-
-
-
 import { sig, type Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { Compartment, Extension } from "@codemirror/state";
 import { File } from "./files";
@@ -34,7 +31,6 @@ export class MiniCodeContext {
   abort = new AbortController();
   shadowRoot!: ShadowRoot;
   private languageCompartment = new Compartment();
-  private dirIndex = new Map<string, File>();
   fileTreeWidth: Signal<number>;
   storage: Storage;
   terminals: TerminalsContext;
@@ -134,7 +130,7 @@ export class MiniCodeContext {
 
   async load() {
     this.logs.info(`Loading workspace "${this.opts.root}"`);
-    this.root = await this.loadDir(this.opts.root);
+    this.root = await this.loadDirShallow(this.opts.root);
     this.logs.debug("Workspace loaded, starting filesystem watch");
     const watchEvents = this.filesystem.watch(this.root.path, {
       recursive: true,
@@ -167,27 +163,29 @@ export class MiniCodeContext {
     })();
   }
 
-  private async loadDir(filepath: string | Path): Promise<File> {
+  /**
+   * Reads a single directory and creates lazy File entries for its children.
+   * Subdirectories are created with a loadFn that calls back into this method
+   * — they are not loaded until accessed.
+   */
+  private async loadDirShallow(filepath: string | Path): Promise<File> {
     const dirpath = Path.from(filepath);
-    const files = await this.filesystem.readdir(filepath.toString(), { withFileTypes: true });
+    const entries = await this.filesystem.readdir(filepath.toString(), { withFileTypes: true });
 
-    const children = await Promise.all(
-      files.map((f) => {
-        if (f.isDirectory()) {
-          return this.loadDir(dirpath.join(f.name));
-        }
-        return new File(dirpath.join(f.name), false);
-      }),
-    );
+    const children = entries.map((e) => {
+      const childPath = dirpath.join(e.name);
+      if (e.isDirectory()) {
+        return new File(childPath, true, undefined, () => this.loadDirShallow(childPath));
+      }
+      return new File(childPath, false);
+    });
 
-    const dir = new File(dirpath, true, children);
-    this.dirIndex.set(dirpath.toString(), dir);
-    return dir;
+    return new File(dirpath, true, children);
   }
 
   async refreshDir(dirPath: string) {
-    const dir = this.dirIndex.get(dirPath);
-    if (!dir || !dir.isDir) return;
+    const dir = this.findLoadedFile(dirPath);
+    if (!dir || !dir.isDir || dir.isLoading?.get()) return;
 
     let entries: Dirent[];
     try {
@@ -197,45 +195,41 @@ export class MiniCodeContext {
       return;
     }
 
-    const currentChildren = dir.files().get();
-    const existing = new Map<string, Signal<File>>();
-    for (const childSig of currentChildren) {
+    const currentChildren = new Map<string, Signal<File>>();
+    for (const childSig of dir.files().get()) {
       const child = childSig.get();
-      existing.set(child.name, childSig);
+      currentChildren.set(child.name, childSig);
     }
 
     const dirpath = Path.from(dirPath);
     const newChildren: Signal<File>[] = [];
-    const seenDirs = new Set<string>();
 
     for (const entry of entries) {
       const childPath = dirpath.join(entry.name);
-      if (entry.isDirectory()) {
-        seenDirs.add(childPath.toString());
-        const existingSig = existing.get(entry.name);
-        if (existingSig) {
-          newChildren.push(existingSig);
-        } else {
-          const newDir = await this.loadDir(childPath);
-          newChildren.push(sig(newDir));
-        }
-      } else {
-        const existingSig = existing.get(entry.name);
-        if (existingSig && !existingSig.get().isDir) {
-          newChildren.push(existingSig);
-        } else {
-          newChildren.push(sig(new File(childPath, false)));
-        }
-      }
-    }
+      const existingSig = currentChildren.get(entry.name);
 
-    for (const [name, childSig] of existing) {
-      const child = childSig.get();
-      if (child.isDir && !seenDirs.has(child.path)) {
-        this.dirIndex.delete(child.path);
-      }
-      if (!newChildren.includes(childSig)) {
-        existing.delete(name);
+      if (existingSig && existingSig.get().isDir && entry.isDirectory()) {
+        // is a directory, did not change
+        newChildren.push(existingSig);
+      } else if (existingSig && !existingSig.get().isDir && !entry.isDirectory()) {
+        // is a file, did not change
+        newChildren.push(existingSig);
+      } else if (existingSig && !existingSig.get().isDir && entry.isDirectory()) {
+        // is a directory, was a file before
+        newChildren.push(
+          sig(new File(childPath, true, undefined, () => this.loadDirShallow(childPath))),
+        );
+      } else if (existingSig && existingSig.get().isDir && !entry.isDirectory()) {
+        // is a file, was a dir before
+        newChildren.push(sig(new File(childPath, false)));
+      } else if (!existingSig && entry.isDirectory()) {
+        // is a directory, didn't exist before
+        newChildren.push(
+          sig(new File(childPath, true, undefined, () => this.loadDirShallow(childPath))),
+        );
+      } else if (!existingSig && !entry.isDirectory()) {
+        // is a file, didn't exist before
+        newChildren.push(sig(new File(childPath, false)));
       }
     }
 
@@ -264,7 +258,7 @@ export class MiniCodeContext {
     }
   }
 
-  findFile(path: string | Path) {
+  findLoadedFile(path: string | Path) {
     path = Path.from(path);
 
     let searchFile = this.root;
@@ -275,10 +269,8 @@ export class MiniCodeContext {
         return undefined;
       }
 
-      const matching = searchFile
-        .files()
-        .get()
-        .find((f) => f.get().name === seg);
+      const chidlren = searchFile.loadedChildren();
+      const matching = chidlren.find((f) => f.get().name === seg);
 
       if (!matching) {
         return undefined;
@@ -290,43 +282,74 @@ export class MiniCodeContext {
     return searchFile;
   }
 
-  async renamePath(oldPath: string, newName: string) {
-    try {
-      const oldFile = this.findFile(oldPath);
-      if (!oldFile) return;
+  async findFile(path: string | Path) {
+    path = Path.from(path);
 
+    let searchFile = this.root;
+
+    const relPath = path.relative(this.root.path, false);
+    for (const seg of relPath.segments()) {
+      if (seg === ".." || !searchFile.isDir) {
+        return undefined;
+      }
+
+      const chidlren = await searchFile.children();
+      const matching = chidlren.find((f) => f.get().name === seg);
+
+      if (!matching) {
+        return undefined;
+      }
+
+      searchFile = matching.get();
+    }
+
+    return searchFile;
+  }
+
+  /**
+   * Walks the file tree from the root to resolve a path to a File. Only
+   * loads directories along the path — siblings are never loaded. Returns
+   * null if the path is not found within the tree.
+   */
+  // async findFile(path: string | Path): Promise<File | null> {
+  //   const target = Path.from(path);
+  //   const relPath = target.relative(this.root.path, false);
+  //   const segments = relPath.segments();
+  //   if (segments.length === 0) return this.root;
+  //   return this.root.resolvePath(segments);
+  // }
+
+  async renamePath(file: File, newName: string) {
+    try {
+      const oldPath = file.path;
       const newPath = Path.from(oldPath).dir().join(newName).toString();
       this.logs.debug(`Renaming "${oldPath}" -> "${newPath}"`);
       await this.filesystem.rename(oldPath, newPath);
 
-      this.tabs.renameTab(oldPath, oldFile.rename(newPath));
+      this.tabs.renameTab(oldPath, file.rename(newPath));
       await this.refreshDir(Path.from(oldPath).dir().toString());
     } catch (err) {
-      this.logs.error(`Failed to rename "${oldPath}" -> "${newName}"`, err);
+      this.logs.error(`Failed to rename "${file.path}" -> "${newName}"`, err);
     }
   }
 
-  async deletePath(path: string) {
+  async deletePath(file: File) {
     try {
-      const oldFile = this.findFile(path);
-      if (!oldFile) return;
-
-      const isDir = oldFile.isDir;
+      const path = file.path;
+      const isDir = file.isDir;
       this.logs.debug(`Deleting "${path}"${isDir ? " (directory)" : ""}`);
       await this.filesystem.rm(path, { recursive: isDir, force: true });
-      this.tabs.close(oldFile);
+      this.tabs.close(file);
       await this.refreshDir(Path.from(path).dir().toString());
     } catch (err) {
-      this.logs.error(`Failed to delete "${path}"`, err);
+      this.logs.error(`Failed to delete "${file.path}"`, err);
     }
   }
 
-  async copyPathTo(srcPath: string, destDir: string) {
+  async copyPathTo(srcFile: File, destDir: string) {
     try {
-      const oldFile = this.findFile(srcPath);
-      if (!oldFile) return;
-
-      const name = oldFile.name;
+      const srcPath = srcFile.path;
+      const name = srcFile.name;
       const destPath = Path.from(destDir).join(name).toString();
       let finalDest = destPath;
       let i = 1;
@@ -353,26 +376,24 @@ export class MiniCodeContext {
       await this.filesystem.copyFile(srcPath, finalDest);
       await this.refreshDir(destDir);
     } catch (err) {
-      this.logs.error(`Failed to copy "${srcPath}" to "${destDir}"`, err);
+      this.logs.error(`Failed to copy "${srcFile.path}" to "${destDir}"`, err);
     }
   }
 
-  async movePathTo(srcPath: string, destDir: string) {
+  async movePathTo(srcFile: File, destDir: string) {
     try {
-      const oldFile = this.findFile(srcPath);
-      if (!oldFile) return;
-
-      const name = oldFile.name;
+      const srcPath = srcFile.path;
+      const name = srcFile.name;
       const destPath = Path.from(destDir).join(name).toString();
       this.logs.debug(`Moving "${srcPath}" -> "${destPath}"`);
       await this.filesystem.rename(srcPath, destPath);
 
-      this.tabs.renameTab(srcPath, oldFile.rename(destPath));
+      this.tabs.renameTab(srcPath, srcFile.rename(destPath));
 
       await this.refreshDir(destDir);
       await this.refreshDir(Path.from(srcPath).dir().toString());
     } catch (err) {
-      this.logs.error(`Failed to move "${srcPath}" to "${destDir}"`, err);
+      this.logs.error(`Failed to move "${srcFile.path}" to "${destDir}"`, err);
     }
   }
 }

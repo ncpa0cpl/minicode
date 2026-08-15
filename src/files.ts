@@ -1,4 +1,4 @@
-import { sig, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
+import { sig, type Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { Path } from "./utils/path";
 
 const collator = Intl.Collator(undefined, {
@@ -15,26 +15,39 @@ function sortFiles(a: File, b: File) {
   return dcmp;
 }
 
+/** Maximum subdirectory count for automatic one-level preloading. */
+const PRELOAD_THRESHOLD = 32;
+
 export class File {
   private _path;
-  private contents?: string;
-  private children?: Signal<Array<Signal<File>>>;
+  private _isDirectory: boolean;
+  private _children?: Signal<Array<Signal<File>>>;
   private _expanded?: Signal<boolean>;
+  private _loaded?: boolean;
+  private _loading?: Signal<boolean>;
+  private _loadFn?: () => Promise<File>;
+  private _loadPromise: Promise<void> | null = null;
 
   constructor(
     path: string | Path,
-    private isDirectory: boolean,
+    isDirectory: boolean,
     files?: Array<File>,
+    loadFn?: () => Promise<File>,
   ) {
     this._path = Path.from(path);
+    this._isDirectory = isDirectory;
+
     if (isDirectory) {
-      this.children = sig((files ?? []).sort(sortFiles).map((f) => sig(f)));
+      this._children = sig((files ?? []).sort(sortFiles).map((f) => sig(f)));
       this._expanded = sig(false);
+      this._loaded = files !== undefined;
+      this._loading = sig(false);
+      this._loadFn = loadFn;
     }
   }
 
   get isDir() {
-    return this.isDirectory;
+    return this._isDirectory;
   }
 
   get path() {
@@ -56,24 +69,104 @@ export class File {
     return this._expanded;
   }
 
-  replaceFiles(files: Signal<File>[]) {
-    if (!this.isDirectory) {
-      throw new Error(`File.files(): ${this.name} is not a directory`);
-    }
-    this.children!.dispatch(files.sort((a, b) => sortFiles(a.get(), b.get())));
+  get isLoading() {
+    return this._loading;
   }
 
-  files() {
-    if (!this.isDirectory) {
+  get isLoaded() {
+    return this._loaded;
+  }
+
+  /**
+   * Sync signal for rendering. Triggers an automatic load if the directory
+   * has not been loaded yet. Always returns the same signal instance — it
+   * starts empty and is dispatched into when loading completes, causing a
+   * reactive re-render.
+   */
+  files(): Signal<Array<Signal<File>>> {
+    if (!this._loading || !this._children) {
       throw new Error(`File.files(): ${this.name} is not a directory`);
     }
-    return this.children!;
+
+    if (this._isDirectory && !this._loaded && !this._loading.get() && this._loadFn) {
+      this.triggerLoad();
+    }
+    return this._children;
+  }
+
+  /**
+   * Semi-async children access for application logic. Returns children
+   * synchronously if already loaded, or a Promise that resolves once the
+   * load completes. Triggers loading automatically if not yet started.
+   */
+  children(): Signal<File>[] | Promise<Signal<File>[]> {
+    if (!this._loading || !this._children) {
+      throw new Error(`File.children(): ${this.name} is not a directory`);
+    }
+
+    if (!this._isDirectory) {
+      return [];
+    }
+    if (this._loaded) {
+      return this._children.get();
+    }
+    if (!this._loadPromise) {
+      this.triggerLoad();
+    }
+    return this._loadPromise!.then(() => this._children!.get());
+  }
+
+  loadedChildren() {
+    if (!this._children) {
+      throw new Error(`File.loadedChildren(): ${this.name} is not a directory`);
+    }
+    return this._children.get();
+  }
+
+  private triggerLoad(): void {
+    if (!this._loading || !this._children) {
+      throw new Error(`File.triggerLoad(): ${this.name} is not a directory`);
+    }
+
+    if (this._loadPromise || this._loaded || !this._loadFn) return;
+    this._loading.dispatch(true);
+    this._loadPromise = (async () => {
+      try {
+        const loadedDir = await this._loadFn!();
+        const childFiles = loadedDir
+          .files()
+          .get()
+          .map((s) => s.get());
+        const sorted = childFiles.sort(sortFiles);
+        const wrapped = sorted.map((f) => sig(f));
+
+        // Preload shallow subdirectories if under the threshold.
+        const subdirs = sorted.filter((f) => f.isDir);
+        if (subdirs.length <= PRELOAD_THRESHOLD) {
+          for (const dir of subdirs) {
+            dir.triggerLoad();
+          }
+        }
+
+        this._children!.dispatch(wrapped);
+        this._loaded = true;
+      } finally {
+        this._loading!.dispatch(false);
+      }
+    })();
+  }
+
+  replaceFiles(files: Signal<File>[]) {
+    if (!this._isDirectory || !this._children) {
+      throw new Error(`File.replaceFiles(): ${this.name} is not a directory`);
+    }
+    this._children.dispatch(files.sort((a, b) => sortFiles(a.get(), b.get())));
   }
 
   collapseAll(recursive: boolean) {
-    if (!this.isDirectory || !this._expanded) return;
-    if (recursive) {
-      for (const childSig of this.children!.get()) {
+    if (!this._isDirectory || !this._expanded || !this._children) return;
+    if (recursive && this._loaded) {
+      for (const childSig of this._children.get()) {
         childSig.get().collapseAll(true);
       }
     }
@@ -81,9 +174,11 @@ export class File {
   }
 
   collapseChildren() {
-    if (!this.isDirectory || !this._expanded) return;
-    for (const childSig of this.children!.get()) {
-      childSig.get().collapseAll(true);
+    if (!this._isDirectory || !this._expanded || !this._children) return;
+    if (this._loaded) {
+      for (const childSig of this._children.get()) {
+        childSig.get().collapseAll(true);
+      }
     }
   }
 
@@ -95,11 +190,13 @@ export class File {
   }
 
   rename(newPath: string): File {
-    const renamed = new File(newPath, false);
-    renamed.isDirectory = this.isDirectory;
-    renamed.contents = this.contents;
-    renamed.children = this.children;
+    const renamed = new File(newPath, this._isDirectory);
+    renamed._children = this._children;
     renamed._expanded = this._expanded;
+    renamed._loaded = this._loaded;
+    renamed._loading = this._loading;
+    renamed._loadFn = this._loadFn;
+    renamed._loadPromise = this._loadPromise;
     return renamed;
   }
 }
