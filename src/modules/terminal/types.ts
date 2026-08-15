@@ -1,5 +1,5 @@
 export interface TerminalBackend {
-  start(): void | Promise<void>;
+  start(dir: string): void | Promise<void>;
   write(data: string): void;
   onData(cb: (data: string) => void): () => void;
   resize(cols: number, rows: number): void;

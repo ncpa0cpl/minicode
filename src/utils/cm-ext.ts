@@ -143,7 +143,6 @@ export class CmEditor {
     });
 
     const result = [...defaultKeymaps, ...customKeymaps];
-    console.log(result);
     return result;
   }
 }

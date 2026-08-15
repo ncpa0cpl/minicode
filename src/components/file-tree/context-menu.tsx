@@ -38,11 +38,7 @@ export function useFileContextMenu(ctx: MiniCodeContext) {
 
   const buildMenuItems = (target: File | null): MenuItem[] => {
     const items: MenuItem[] = [];
-    const dirFile = target
-      ? target.isDir
-        ? target
-        : null
-      : ctx.root;
+    const dirFile = target ? (target.isDir ? target : null) : ctx.root;
     const dirPath = dirFile ? dirFile.path : ctx.root.path;
 
     items.push({ label: "New File", action: () => newFile(dirPath) });
@@ -99,6 +95,13 @@ export function useFileContextMenu(ctx: MiniCodeContext) {
     }
 
     if (target && target.isDir) {
+      if (ctx.terminals.hasTerminalSupport()) {
+        items.push({
+          label: "Open in terminal",
+          action: () => ctx.terminals.open(target.path),
+        });
+      }
+
       items.push({
         label: "Refresh",
         action: () => {

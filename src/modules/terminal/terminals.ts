@@ -66,7 +66,7 @@ export class TerminalsContext {
     }
   }
 
-  async open() {
+  async open(dirPath?: string) {
     if (!this.factory) return;
     try {
       const { Terminal } = await import("@xterm/xterm");
@@ -111,7 +111,7 @@ export class TerminalsContext {
         },
       };
 
-      await backend.start();
+      await backend.start(dirPath ?? this.minicode.root.path);
       this.minicode.logs.debug(`Terminal #${id} backend started`);
 
       this.data.dispatch((prev) => [...prev, tabData]);
