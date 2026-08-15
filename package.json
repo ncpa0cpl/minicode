@@ -29,7 +29,8 @@
   },
   "scripts": {
     "build": "bun ./scripts/build.ts",
-    "fmt": "oxfmt ./"
+    "fmt": "oxfmt ./",
+    "release": "git push && git switch release && git rebase main && git push && git switch main"
   },
   "dependencies": {
     "@ncpa0cpl/vanilla-jsx": "^0.0.1-alpha.50",
