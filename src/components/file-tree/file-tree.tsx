@@ -357,7 +357,7 @@ function FileTreeDirectory(props: {
         </span>
       </button>
       <div class={{ dirfiles: true, collapsed: expanded.derive((e) => !e) }}>
-        {dir.isLoading.derive((l) =>
+        {dir.isLoading?.derive((l) =>
           l && !dir.isLoaded ? (
             <div class="tree-loading-row" style={{ "--level": level + 1 }}>
               <span class="tree-loading-spinner"></span>
