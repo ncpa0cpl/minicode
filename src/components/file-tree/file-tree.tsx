@@ -5,6 +5,7 @@ import { ContextMenu } from "../context-menu/context-menu";
 import { useFileContextMenu } from "./context-menu";
 import { ChevronIcon, CollapseIcon, DirIcon, FileIcon } from "./icons";
 import { PromptModal } from "../prompt-modal/prompt-modal";
+import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 
 const MIN_WIDTH = 150;
 
@@ -329,6 +330,8 @@ function FileTreeDirectory(props: {
 
   const toggle = () => expanded.dispatch((e) => !e);
 
+  const expandedOrLoaded = sig.or(expanded, dir.isLoaded);
+
   return (
     <div>
       <button
@@ -357,7 +360,7 @@ function FileTreeDirectory(props: {
         </span>
       </button>
       <div class={{ dirfiles: true, collapsed: expanded.derive((e) => !e) }}>
-        {dir.isLoading?.derive((l) =>
+        {dir.isLoading!.derive((l) =>
           l && !dir.isLoaded ? (
             <div class="tree-loading-row" style={{ "--level": level + 1 }}>
               <span class="tree-loading-spinner"></span>
@@ -365,33 +368,39 @@ function FileTreeDirectory(props: {
             </div>
           ) : null,
         )}
-        {dir.files().$map((f) => {
-          return (
-            <div>
-              {f.derive((f) => {
-                if (f.isDir) {
-                  return (
-                    <FileTreeDirectory
-                      ctx={ctx}
-                      dir={f}
-                      level={level + 1}
-                      onContextMenu={onContextMenu}
-                    />
-                  );
-                } else {
-                  return (
-                    <FileTreeFile
-                      ctx={ctx}
-                      file={f}
-                      level={level + 1}
-                      onContextMenu={onContextMenu}
-                    />
-                  );
-                }
+        {expandedOrLoaded.derive((eol) =>
+          eol ? (
+            <div style={{ display: "contents" }}>
+              {dir.files().$map((f) => {
+                return (
+                  <div>
+                    {f.derive((f) => {
+                      if (f.isDir) {
+                        return (
+                          <FileTreeDirectory
+                            ctx={ctx}
+                            dir={f}
+                            level={level + 1}
+                            onContextMenu={onContextMenu}
+                          />
+                        );
+                      } else {
+                        return (
+                          <FileTreeFile
+                            ctx={ctx}
+                            file={f}
+                            level={level + 1}
+                            onContextMenu={onContextMenu}
+                          />
+                        );
+                      }
+                    })}
+                  </div>
+                );
               })}
             </div>
-          );
-        })}
+          ) : null,
+        )}
       </div>
     </div>
   );

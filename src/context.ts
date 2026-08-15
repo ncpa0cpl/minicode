@@ -168,24 +168,35 @@ export class MiniCodeContext {
    * Subdirectories are created with a loadFn that calls back into this method
    * — they are not loaded until accessed.
    */
-  private async loadDirShallow(filepath: string | Path): Promise<File> {
+  private async loadDirShallow(
+    filepath: string | Path,
+    preloadSubdirectories = true,
+  ): Promise<File> {
     const dirpath = Path.from(filepath);
     const entries = await this.filesystem.readdir(filepath.toString(), { withFileTypes: true });
 
-    const children = entries.map((e) => {
-      const childPath = dirpath.join(e.name);
-      if (e.isDirectory()) {
-        return new File(childPath, true, undefined, () => this.loadDirShallow(childPath));
-      }
-      return new File(childPath, false);
-    });
+    const children = await Promise.all(
+      entries.map(async (e) => {
+        const childPath = dirpath.join(e.name);
+        if (e.isDirectory()) {
+          const f = new File(childPath, true, undefined, () =>
+            this.loadDirShallow(childPath, false),
+          );
+          if (preloadSubdirectories) {
+            await f.children();
+          }
+          return f;
+        }
+        return new File(childPath, false);
+      }),
+    );
 
     return new File(dirpath, true, children);
   }
 
   async refreshDir(dirPath: string) {
     const dir = this.findLoadedFile(dirPath);
-    if (!dir || !dir.isDir || dir.isLoading?.get()) return;
+    if (!dir || !dir.isDir || dir.isLoading?.get() || !dir.isLoaded?.get()) return;
 
     let entries: Dirent[];
     try {

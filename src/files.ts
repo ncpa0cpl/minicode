@@ -23,7 +23,7 @@ export class File {
   private _isDirectory: boolean;
   private _children?: Signal<Array<Signal<File>>>;
   private _expanded?: Signal<boolean>;
-  private _loaded?: boolean;
+  private _loaded?: Signal<boolean>;
   private _loading?: Signal<boolean>;
   private _loadFn?: () => Promise<File>;
   private _loadPromise: Promise<void> | null = null;
@@ -40,9 +40,15 @@ export class File {
     if (isDirectory) {
       this._children = sig((files ?? []).sort(sortFiles).map((f) => sig(f)));
       this._expanded = sig(false);
-      this._loaded = files !== undefined;
+      this._loaded = sig(files !== undefined);
       this._loading = sig(false);
       this._loadFn = loadFn;
+
+      this.expanded.add((expanded) => {
+        if (expanded) {
+          this.preloadChildren();
+        }
+      });
     }
   }
 
@@ -84,11 +90,11 @@ export class File {
    * reactive re-render.
    */
   files(): Signal<Array<Signal<File>>> {
-    if (!this._loading || !this._children) {
+    if (!this._loading || !this._loaded || !this._children) {
       throw new Error(`File.files(): ${this.name} is not a directory`);
     }
 
-    if (this._isDirectory && !this._loaded && !this._loading.get() && this._loadFn) {
+    if (this._isDirectory && !this._loaded.get() && !this._loading.get() && this._loadFn) {
       this.triggerLoad();
     }
     return this._children;
@@ -100,14 +106,14 @@ export class File {
    * load completes. Triggers loading automatically if not yet started.
    */
   children(): Signal<File>[] | Promise<Signal<File>[]> {
-    if (!this._loading || !this._children) {
+    if (!this._loading || !this._loaded || !this._children) {
       throw new Error(`File.children(): ${this.name} is not a directory`);
     }
 
     if (!this._isDirectory) {
       return [];
     }
-    if (this._loaded) {
+    if (this._loaded.get()) {
       return this._children.get();
     }
     if (!this._loadPromise) {
@@ -123,12 +129,26 @@ export class File {
     return this._children.get();
   }
 
-  private triggerLoad(): void {
-    if (!this._loading || !this._children) {
+  private preloadChildren() {
+    if (!this._children) {
       throw new Error(`File.triggerLoad(): ${this.name} is not a directory`);
     }
 
-    if (this._loadPromise || this._loaded || !this._loadFn) return;
+    // Preload shallow subdirectories if under the threshold.
+    const subdirs = this._children.get().filter((f) => f.get().isDir);
+    if (subdirs.length <= PRELOAD_THRESHOLD) {
+      for (const dir of subdirs) {
+        dir.get().triggerLoad();
+      }
+    }
+  }
+
+  private triggerLoad(): void {
+    if (!this._loading || !this._loaded || !this._children) {
+      throw new Error(`File.triggerLoad(): ${this.name} is not a directory`);
+    }
+
+    if (this._loadPromise || this._loaded.get() || !this._loadFn) return;
     this._loading.dispatch(true);
     this._loadPromise = (async () => {
       try {
@@ -140,16 +160,8 @@ export class File {
         const sorted = childFiles.sort(sortFiles);
         const wrapped = sorted.map((f) => sig(f));
 
-        // Preload shallow subdirectories if under the threshold.
-        const subdirs = sorted.filter((f) => f.isDir);
-        if (subdirs.length <= PRELOAD_THRESHOLD) {
-          for (const dir of subdirs) {
-            dir.triggerLoad();
-          }
-        }
-
         this._children!.dispatch(wrapped);
-        this._loaded = true;
+        this._loaded!.dispatch(true);
       } finally {
         this._loading!.dispatch(false);
       }
@@ -164,8 +176,8 @@ export class File {
   }
 
   collapseAll(recursive: boolean) {
-    if (!this._isDirectory || !this._expanded || !this._children) return;
-    if (recursive && this._loaded) {
+    if (!this._isDirectory || !this._loaded || !this._expanded || !this._children) return;
+    if (recursive && this._loaded.get()) {
       for (const childSig of this._children.get()) {
         childSig.get().collapseAll(true);
       }
@@ -175,7 +187,7 @@ export class File {
 
   collapseChildren() {
     if (!this._isDirectory || !this._expanded || !this._children) return;
-    if (this._loaded) {
+    if (this._loaded?.get()) {
       for (const childSig of this._children.get()) {
         childSig.get().collapseAll(true);
       }
