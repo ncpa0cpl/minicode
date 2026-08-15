@@ -157,11 +157,8 @@ export class TerminalsContext {
   }
 
   toggle() {
-    if (this.isVisible.get()) {
-      this.isVisible.dispatch(false);
-    } else if (this.data.get().length > 0) {
-      this.isVisible.dispatch(true);
-    } else {
+    this.isVisible.dispatch((v) => !v);
+    if (this.isVisible.get() && this.data.get().length === 0) {
       this.open();
     }
   }

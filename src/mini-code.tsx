@@ -211,6 +211,11 @@ export function MiniCode(opts: MiniCodeOptions) {
       if (ft && ctx.formatter.canFormat(ft)) {
         ctx.tabs.formatContent(ft);
       }
+    } else if (e.key === "`" && e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+      if (ctx.terminals.hasTerminalSupport()) {
+        e.preventDefault();
+        ctx.terminals.toggle();
+      }
     }
   };
 
