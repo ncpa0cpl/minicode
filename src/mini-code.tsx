@@ -49,6 +49,17 @@ export type Storage = {
   removeItem(key: string): void;
 };
 
+export type TitleBarButton = {
+  position?: "left" | "right";
+  content?: string | Element;
+  handler?: (
+    ev: PointerEvent & {
+      target: HTMLButtonElement;
+    },
+  ) => void;
+  nostyle?: boolean;
+};
+
 export type LanguageConfig = {
   /**
    * List of extensions this config applies to. If multiple
@@ -75,6 +86,7 @@ export type MiniCodeOptions = {
   languages?: LanguageConfig[];
   terminal?: TerminalFactory;
   storage?: Storage;
+  titleBarButtons?: Array<TitleBarButton>;
 };
 
 const minicodeStyles = css`

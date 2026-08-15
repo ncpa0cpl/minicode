@@ -2,20 +2,51 @@ import { css } from "embedcss";
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { LogViewer } from "../log-viewer/log-viewer";
+import { checkIcon, logIcon, terminalIcon, themeIcon } from "./icons";
 
 const TopBarStyles = css`
   .top-bar {
     display: flex;
     flex-direction: row;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 4px;
+    align-items: stretch;
+    justify-content: stretch;
     flex: 0 0 auto;
     height: 34px;
     padding: 0 8px;
     border-bottom: 1px solid var(--minicode-border, #2a2f3a);
     background: var(--minicode-bg, #1b1f27);
     user-select: none;
+    width: stretch;
+
+    & .top-bar-segments {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      flex: 0 0 auto;
+      user-select: none;
+      height: stretch;
+      width: stretch;
+
+      & .top-bar-left {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 4px;
+        flex: 0 0 auto;
+      }
+
+      & .top-bar-right {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        flex: 0 0 auto;
+      }
+    }
   }
 
   .icon-btn {
@@ -31,6 +62,10 @@ const TopBarStyles = css`
     outline: none;
     border-radius: 4px;
     position: relative;
+
+    &.custom {
+      width: unset;
+    }
 
     &:hover {
       color: var(--minicode-fg, #cdd3de);
@@ -117,109 +152,6 @@ const TopBarStyles = css`
   }
 `;
 
-function themeIcon() {
-  return (
-    <svg
-      attribute:width="16"
-      attribute:height="16"
-      attribute:viewBox="0 0 16 16"
-      attribute:fill="none"
-    >
-      <circle
-        attribute:cx="8"
-        attribute:cy="8"
-        attribute:r="6"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-      />
-      <path attribute:d="M8 2a6 6 0 0 0 0 12z" attribute:fill="currentColor" />
-    </svg>
-  );
-}
-
-function terminalIcon() {
-  return (
-    <svg
-      attribute:width="16"
-      attribute:height="16"
-      attribute:viewBox="0 0 16 16"
-      attribute:fill="none"
-    >
-      <path
-        attribute:d="M3 5l3 3-3 3"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linecap="round"
-        attribute:stroke-linejoin="round"
-      />
-      <line
-        attribute:x1="8"
-        attribute:y1="11"
-        attribute:x2="13"
-        attribute:y2="11"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linecap="round"
-      />
-    </svg>
-  );
-}
-
-function checkIcon() {
-  return (
-    <svg
-      attribute:width="12"
-      attribute:height="12"
-      attribute:viewBox="0 0 16 16"
-      attribute:fill="none"
-    >
-      <path
-        attribute:d="M3 8l3 3 6-6"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="2"
-        attribute:stroke-linecap="round"
-        attribute:stroke-linejoin="round"
-      />
-    </svg>
-  );
-}
-
-function logIcon() {
-  return (
-    <svg
-      attribute:width="16"
-      attribute:height="16"
-      attribute:viewBox="0 0 16 16"
-      attribute:fill="none"
-    >
-      <path
-        attribute:d="M2 3.5h12v7H6l-3 3v-3H2z"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linejoin="round"
-      />
-      <line
-        attribute:x1="5"
-        attribute:y1="6"
-        attribute:x2="11"
-        attribute:y2="6"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linecap="round"
-      />
-      <line
-        attribute:x1="5"
-        attribute:y1="8.5"
-        attribute:x2="9"
-        attribute:y2="8.5"
-        attribute:stroke="currentColor"
-        attribute:stroke-width="1.5"
-        attribute:stroke-linecap="round"
-      />
-    </svg>
-  );
-}
-
 export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
   const themeMenuOpen = sig(false);
   const logViewerOpen = sig(false);
@@ -238,50 +170,78 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
 
   return (
     <div class={TopBarStyles}>
-      <div class="top-bar" onclick={closeMenu}>
-        <button class="icon-btn" title="Logs" onclick={() => logViewerOpen.dispatch((v) => !v)}>
-          {logIcon()}
-          <span class={{ "log-badge": true, "has-count": errorCount.derive((c) => c > 0) }}>
-            {errorCount.derive((c) => (c > 99 ? "99+" : String(c)))}
-          </span>
-        </button>
-        <div class="theme-dropdown">
-          <button class="icon-btn" onclick={() => themeMenuOpen.dispatch((v) => !v)}>
-            {themeIcon()}
-          </button>
-          {themeMenuOpen.derive((open) =>
-            open ? (
-              <div class="theme-menu">
-                {ctx.themes.available.map((t) => (
-                  <button
-                    class={{
-                      "theme-item": true,
-                      active: currentThemeName.derive((n) => n === t.name),
-                    }}
-                    onclick={() => {
-                      ctx.themes.set(t.name);
-                      themeMenuOpen.dispatch(false);
-                    }}
-                  >
-                    <span>{t.name}</span>
-                    <span class="check">
-                      {currentThemeName.derive((n) => (n === t.name ? checkIcon() : null))}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : null,
-          )}
+      <div class="top-bar-segments" onclick={closeMenu}>
+        <div class="top-bar-left">
+          {ctx.titlebarCustomLeftButtons().map((spec) => (
+            <button
+              class={{
+                custom: true,
+                "left-btn": true,
+                "icon-btn": !spec.nostyle,
+              }}
+              onclick={spec.handler}
+            >
+              {spec.content}
+            </button>
+          ))}
         </div>
-        <button
-          class={{
-            "icon-btn": true,
-            disabled: ctx.terminals.hasTerminalSupport() ? undefined : true,
-          }}
-          onclick={() => ctx.terminals.toggle()}
-        >
-          {terminalIcon()}
-        </button>
+        <div class="top-bar-right">
+          <button class="icon-btn" title="Logs" onclick={() => logViewerOpen.dispatch((v) => !v)}>
+            {logIcon()}
+            <span class={{ "log-badge": true, "has-count": errorCount.derive((c) => c > 0) }}>
+              {errorCount.derive((c) => (c > 99 ? "99+" : String(c)))}
+            </span>
+          </button>
+          <div class="theme-dropdown">
+            <button class="icon-btn" onclick={() => themeMenuOpen.dispatch((v) => !v)}>
+              {themeIcon()}
+            </button>
+            {themeMenuOpen.derive((open) =>
+              open ? (
+                <div class="theme-menu">
+                  {ctx.themes.available.map((t) => (
+                    <button
+                      class={{
+                        "theme-item": true,
+                        active: currentThemeName.derive((n) => n === t.name),
+                      }}
+                      onclick={() => {
+                        ctx.themes.set(t.name);
+                        themeMenuOpen.dispatch(false);
+                      }}
+                    >
+                      <span>{t.name}</span>
+                      <span class="check">
+                        {currentThemeName.derive((n) => (n === t.name ? checkIcon() : null))}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null,
+            )}
+          </div>
+          <button
+            class={{
+              "icon-btn": true,
+              disabled: ctx.terminals.hasTerminalSupport() ? undefined : true,
+            }}
+            onclick={() => ctx.terminals.toggle()}
+          >
+            {terminalIcon()}
+          </button>
+          {ctx.titlebarCustomRightButtons().map((spec) => (
+            <button
+              class={{
+                custom: true,
+                "right-btn": true,
+                "icon-btn": !spec.nostyle,
+              }}
+              onclick={spec.handler}
+            >
+              {spec.content}
+            </button>
+          ))}
+        </div>
       </div>
       {logViewerOpen.derive((open) =>
         open ? <LogViewer ctx={ctx} onClose={() => logViewerOpen.dispatch(false)} /> : null,

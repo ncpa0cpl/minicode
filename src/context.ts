@@ -306,19 +306,6 @@ export class MiniCodeContext {
     return searchFile;
   }
 
-  /**
-   * Walks the file tree from the root to resolve a path to a File. Only
-   * loads directories along the path — siblings are never loaded. Returns
-   * null if the path is not found within the tree.
-   */
-  // async findFile(path: string | Path): Promise<File | null> {
-  //   const target = Path.from(path);
-  //   const relPath = target.relative(this.root.path, false);
-  //   const segments = relPath.segments();
-  //   if (segments.length === 0) return this.root;
-  //   return this.root.resolvePath(segments);
-  // }
-
   async renamePath(file: File, newName: string) {
     try {
       const oldPath = file.path;
@@ -395,5 +382,13 @@ export class MiniCodeContext {
     } catch (err) {
       this.logs.error(`Failed to move "${srcFile.path}" to "${destDir}"`, err);
     }
+  }
+
+  titlebarCustomLeftButtons() {
+    return this.opts.titleBarButtons?.filter((b) => b.position === "left") ?? [];
+  }
+
+  titlebarCustomRightButtons() {
+    return this.opts.titleBarButtons?.filter((b) => b.position === "right") ?? [];
   }
 }
