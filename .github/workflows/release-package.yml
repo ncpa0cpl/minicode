@@ -40,4 +40,4 @@ jobs:
       - name: Building
         run: bun run build
       - name: Publish
-        run: npm publish --access public
+        run: npm publish --access public --tag=latest
