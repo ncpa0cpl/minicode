@@ -111,7 +111,7 @@ export class TerminalsContext {
         },
       };
 
-      await backend.start(dirPath ?? this.minicode.root.path);
+      await backend.start(dirPath ?? this.minicode.rootPath);
       this.minicode.logs.debug(`Terminal #${id} backend started`);
 
       this.data.dispatch((prev) => [...prev, tabData]);

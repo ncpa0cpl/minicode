@@ -27,6 +27,7 @@ export class MiniCodeContext {
     terminalHeight: "minicode:terminal-height",
   } as const;
 
+  rootPath: string;
   root!: File;
   filesystem: Filesystem;
   abort = new AbortController();
@@ -47,6 +48,7 @@ export class MiniCodeContext {
   constructor(private opts: MiniCodeOptions) {
     this.mapLangConfigs(opts.languages ?? []);
 
+    this.rootPath = opts.root;
     this.filesystem = opts.filesystem;
     this.storage = opts.storage ?? localStorage;
 

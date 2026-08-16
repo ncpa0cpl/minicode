@@ -231,17 +231,19 @@ export function MiniCode(opts: MiniCodeOptions) {
       return;
     }
 
+    const targetClass = cname(target);
+
     const isInsideEditor =
-      target.className.startsWith("cm-") ||
-      target.className.includes(" cm-") ||
+      targetClass.startsWith("cm-") ||
+      targetClass.includes(" cm-") ||
       target.closest(".tab-editor") != null;
     if (isInsideEditor) {
       return;
     }
 
     const isInsideTerminal =
-      target.className.startsWith("xterm-") ||
-      target.className.includes(" xterm-") ||
+      targetClass.startsWith("xterm-") ||
+      targetClass.includes(" xterm-") ||
       target.closest(".terminal-body") != null;
     if (isInsideTerminal) {
       return;
@@ -284,4 +286,20 @@ export function MiniCode(opts: MiniCodeOptions) {
   shadowRoot.append(minicodeElem);
 
   return shadowRootHost;
+}
+
+function isSvgElem(target: Element) {
+  return target.namespaceURI === "http://www.w3.org/2000/svg";
+}
+
+function cname(target: Element) {
+  if (isSvgElem(target)) {
+    let next = target.parentElement;
+    while (next && isSvgElem(next)) {
+      next = next.parentElement;
+    }
+    if (next) return "className" in next ? next.className : "";
+    return "";
+  }
+  return "className" in target ? target.className : "";
 }
