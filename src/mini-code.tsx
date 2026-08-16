@@ -12,6 +12,7 @@ import { TerminalFactory } from "./modules/terminal/types";
 import { Theme, ThemeInput, themeToCssVars } from "./modules/theme/themes";
 import { LspTransportFactory } from "./modules/lsp/types";
 import { FormatterFactory } from "./modules/formatter/types";
+import { KeyBinding } from "@codemirror/view";
 
 export type Dirent = {
   isDirectory(): boolean;
@@ -60,6 +61,11 @@ export type TitleBarButton = {
   nostyle?: boolean;
 };
 
+export type MinicodeKeybind = {
+  key: string;
+  run: (ctx: MiniCodeContext) => void;
+};
+
 export type LanguageConfig = {
   /**
    * List of extensions this config applies to. If multiple
@@ -87,6 +93,10 @@ export type MiniCodeOptions = {
   terminal?: TerminalFactory;
   storage?: Storage;
   titleBarButtons?: Array<TitleBarButton>;
+  keymaps?: {
+    global?: Array<MinicodeKeybind>;
+    editor?: Array<KeyBinding>;
+  };
 };
 
 const minicodeStyles = css`
@@ -98,6 +108,11 @@ const minicodeStyles = css`
 
     scrollbar-width: thin;
     scrollbar-color: var(--minicode-border, #2a2f3a) transparent;
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+    }
   }
 
   .minicode-editor {
@@ -199,31 +214,49 @@ export function MiniCode(opts: MiniCodeOptions) {
   const shadowRoot = shadowRootHost.attachShadow({ mode: "closed" });
   ctx.shadowRoot = shadowRoot;
   const onkeydown = (e: KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "s" && !e.shiftKey && !e.altKey) {
-      e.preventDefault();
-      const ft = ctx.tabs.focused.get();
-      if (ft) {
-        ctx.tabs.save(ft);
-      }
-    } else if (e.key === "f" && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-      e.preventDefault();
-      const ft = ctx.tabs.focused.get();
-      if (ft && ctx.formatter.canFormat(ft)) {
-        ctx.tabs.formatContent(ft);
-      }
-    } else if (e.key === "`" && e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
-      if (ctx.terminals.hasTerminalSupport()) {
-        e.preventDefault();
-        ctx.terminals.toggle();
-      }
-    }
+    ctx.keymap.handleEvent(e);
   };
 
-  shadowRoot.append(
+  const onclick = (e: PointerEvent) => {
+    const target = e.target as Element;
+    if (
+      target.tagName === "BUTTON" ||
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT" ||
+      target.tagName === "AREA" ||
+      target.tagName === "A" ||
+      ("tabIndex" in target && target.tabIndex === 1)
+    ) {
+      return;
+    }
+
+    const isInsideEditor =
+      target.className.startsWith("cm-") ||
+      target.className.includes(" cm-") ||
+      target.closest(".tab-editor") != null;
+    if (isInsideEditor) {
+      return;
+    }
+
+    const isInsideTerminal =
+      target.className.startsWith("xterm-") ||
+      target.className.includes(" xterm-") ||
+      target.closest(".terminal-body") != null;
+    if (isInsideTerminal) {
+      return;
+    }
+
+    minicodeElem.focus();
+  };
+
+  const minicodeElem = (
     <div
       class={minicodeStyles}
       style={ctx.themes.theme.derive(themeToCssVars)}
       onkeydown={onkeydown}
+      onclick={onclick}
+      tabIndex={0}
     >
       <style>{stylesheet}</style>
       {ready.derive((ready) =>
@@ -245,8 +278,10 @@ export function MiniCode(opts: MiniCodeOptions) {
           </div>
         ),
       )}
-    </div>,
-  );
+    </div>
+  ) as HTMLDivElement;
+
+  shadowRoot.append(minicodeElem);
 
   return shadowRootHost;
 }

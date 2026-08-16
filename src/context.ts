@@ -17,6 +17,7 @@ import { LogContext } from "./modules/log/log";
 import { localSig } from "./utils/local-signal";
 import { CmEditor, CmPlugin } from "./utils/cm-ext";
 import { FormatterContext } from "./modules/formatter/context";
+import { KeymapContext } from "./modules/keymap/keymap";
 
 export class MiniCodeContext {
   static storageKeys = {
@@ -39,6 +40,7 @@ export class MiniCodeContext {
   lsp: LspContext;
   logs: LogContext;
   formatter: FormatterContext;
+  keymap: KeymapContext;
 
   languageConfigs: Record<string, LanguageConfig> = {};
 
@@ -54,6 +56,7 @@ export class MiniCodeContext {
     this.lsp = new LspContext(this, opts);
     this.themes = new ThemesContext(this, opts);
     this.formatter = new FormatterContext(this, opts);
+    this.keymap = new KeymapContext(this, opts);
 
     this.fileTreeWidth = localSig(this.storage, MiniCodeContext.storageKeys.fileTreeWidth, 360);
   }
@@ -401,5 +404,9 @@ export class MiniCodeContext {
 
   titlebarCustomRightButtons() {
     return this.opts.titleBarButtons?.filter((b) => b.position === "right") ?? [];
+  }
+
+  customEditorKeymap() {
+    return this.opts.keymaps?.editor;
   }
 }

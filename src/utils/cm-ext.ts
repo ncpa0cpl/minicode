@@ -12,6 +12,7 @@ import {
   cursorDocEnd,
 } from "@codemirror/commands";
 import { foldAll, unfoldAll } from "@codemirror/language";
+import { MiniCodeContext } from "../context";
 
 export class CmPlugin {
   constructor(
@@ -35,7 +36,7 @@ export class CmEditor {
   private plugins = new Map<string, CmPlugin>();
 
   constructor(
-    private shadowRoot: ShadowRoot,
+    private ctx: MiniCodeContext,
     private initialContent: string,
     private onChange: (content: string) => void,
     maxPlugins: number,
@@ -46,9 +47,9 @@ export class CmEditor {
 
     this._editor ??= new EditorView({
       doc: this.initialContent,
-      root: this.shadowRoot,
+      root: this.ctx.shadowRoot,
       extensions: [
-        keymap.of(CmEditor.keymap()),
+        keymap.of(this.keymap()),
         basicSetup,
         EditorView.updateListener.of((u) => {
           if (u.docChanged) {
@@ -84,8 +85,8 @@ export class CmEditor {
     return this.getPlugin(name) ?? this.addPlugin(name);
   }
 
-  static keymap() {
-    const customKeymaps: KeyBinding[] = [
+  keymap() {
+    const customBuiltinKeymaps: KeyBinding[] = [
       {
         key: "Tab",
         preventDefault: true,
@@ -125,24 +126,36 @@ export class CmEditor {
         run: cursorDocEnd,
       },
     ];
-    const customKeymapsKeys = new Set(customKeymaps.map((e) => e.key));
-    const defaultKeymaps = standardKeymap.filter((km) => {
-      if (km.key && customKeymapsKeys.has(km.key)) {
-        return false;
-      }
-      if (km.linux && customKeymapsKeys.has(km.linux)) {
-        return false;
-      }
-      if (km.mac && customKeymapsKeys.has(km.mac)) {
-        return false;
-      }
-      if (km.win && customKeymapsKeys.has(km.win)) {
-        return false;
-      }
-      return true;
-    });
 
-    const result = [...defaultKeymaps, ...customKeymaps];
+    const result = mergeKeymaps(standardKeymap, customBuiltinKeymaps);
+
+    if (this.ctx.customEditorKeymap()) {
+      return mergeKeymaps(result, this.ctx.customEditorKeymap()!);
+    }
+
     return result;
   }
+}
+
+function mergeKeymaps(
+  base: ReadonlyArray<KeyBinding>,
+  km: ReadonlyArray<KeyBinding>,
+): Array<KeyBinding> {
+  const overrideKeys = new Set(km.map((e) => e.key));
+  const defaultKeymaps = standardKeymap.filter((km) => {
+    if (km.key && overrideKeys.has(km.key)) {
+      return false;
+    }
+    if (km.linux && overrideKeys.has(km.linux)) {
+      return false;
+    }
+    if (km.mac && overrideKeys.has(km.mac)) {
+      return false;
+    }
+    if (km.win && overrideKeys.has(km.win)) {
+      return false;
+    }
+    return true;
+  });
+  return [...base, ...defaultKeymaps];
 }

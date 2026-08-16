@@ -224,7 +224,7 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
         {(t: TabData) => {
           if (!t.view) {
             const cm = new CmEditor(
-              ctx.shadowRoot,
+              ctx,
               t.initialContent,
               (docStr) => {
                 t.dirty.dispatch(docStr !== t.savedContent);
