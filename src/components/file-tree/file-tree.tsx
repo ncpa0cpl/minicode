@@ -12,7 +12,7 @@ const MIN_WIDTH = 150;
 const FileTreeStyles = css`
   .file-tree-wrap {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     height: 100%;
     flex: 0 0 auto;
     border-right: 1px solid var(--minicode-border, #2a2f3a);
@@ -28,7 +28,6 @@ const FileTreeStyles = css`
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--minicode-border, #2a2f3a) transparent;
-    padding: 0.46em 0;
     font-family: var(--minicode-font, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
     font-size: 1em;
     line-height: 1.4;
@@ -139,15 +138,10 @@ const FileTreeStyles = css`
     justify-content: center;
     flex: 0 0 auto;
     padding: 0.46em 0.62em;
-    margin-bottom: 0.31em;
     border-bottom: 1px solid var(--minicode-border, #2a2f3a);
     font-weight: 600;
     color: var(--minicode-fg, #cdd3de);
     user-select: none;
-    position: sticky;
-    top: 0;
-    left: 0;
-    right: 0;
     background-color: var(--minicode-bg, #1b1f27);
 
     & .project-name {
@@ -254,21 +248,21 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
   };
 
   return (
-    <div class={FileTreeStyles} style={{ width: width, display: "flex", flexDirection: "row" }}>
+    <div class={FileTreeStyles} style={{ width: width }}>
+      <div class="project-header">
+        <span class="project-name">{ctx.root.name}</span>
+        <button
+          class="collapse-btn"
+          title="Collapse all directories"
+          onclick={(e: MouseEvent) => {
+            e.stopPropagation();
+            ctx.root.collapseAll(true);
+          }}
+        >
+          <CollapseIcon />
+        </button>
+      </div>
       <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, null)}>
-        <div class="project-header">
-          <span class="project-name">{ctx.root.name}</span>
-          <button
-            class="collapse-btn"
-            title="Collapse all directories"
-            onclick={(e: MouseEvent) => {
-              e.stopPropagation();
-              ctx.root.collapseAll(true);
-            }}
-          >
-            <CollapseIcon />
-          </button>
-        </div>
         {ctx.root.files().$map((f) => {
           return (
             <div>

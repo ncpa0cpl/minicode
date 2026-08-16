@@ -9,8 +9,8 @@ const List = Range;
 function closeIcon() {
   return (
     <svg
-      attribute:width="10"
-      attribute:height="10"
+      attribute:width="0.77em"
+      attribute:height="0.77em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
@@ -27,8 +27,8 @@ function closeIcon() {
 function plusIcon() {
   return (
     <svg
-      attribute:width="12"
-      attribute:height="12"
+      attribute:width="0.92em"
+      attribute:height="0.92em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >

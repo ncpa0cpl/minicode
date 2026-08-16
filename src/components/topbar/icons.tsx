@@ -1,8 +1,8 @@
 export function themeIcon() {
   return (
     <svg
-      attribute:width="16"
-      attribute:height="16"
+      attribute:width="1.23em"
+      attribute:height="1.23em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
@@ -21,8 +21,8 @@ export function themeIcon() {
 export function terminalIcon() {
   return (
     <svg
-      attribute:width="16"
-      attribute:height="16"
+      attribute:width="1.23em"
+      attribute:height="1.23em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
@@ -49,8 +49,8 @@ export function terminalIcon() {
 export function checkIcon() {
   return (
     <svg
-      attribute:width="12"
-      attribute:height="12"
+      attribute:width="0.92em"
+      attribute:height="0.92em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
@@ -68,8 +68,8 @@ export function checkIcon() {
 export function logIcon() {
   return (
     <svg
-      attribute:width="16"
-      attribute:height="16"
+      attribute:width="1.23em"
+      attribute:height="1.23em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >

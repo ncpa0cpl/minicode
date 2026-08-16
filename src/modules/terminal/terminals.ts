@@ -5,7 +5,7 @@ import { TerminalFactory, TerminalTabData } from "./types";
 import { localSig } from "../../utils/local-signal";
 
 export class TerminalsContext {
-  fontSize = sig(16);
+  fontSize = sig(14);
   data = sig<TerminalTabData[]>([]);
   isVisible: Signal<boolean>;
   active = sig<number | null>(null);

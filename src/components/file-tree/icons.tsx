@@ -36,8 +36,8 @@ function extColor(ext: string | undefined, overrides?: Record<string, string>): 
 export function ChevronIcon() {
   return (
     <svg
-      attribute:width={12}
-      attribute:height="12"
+      attribute:width="0.92em"
+      attribute:height="0.92em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
@@ -55,8 +55,8 @@ export function ChevronIcon() {
 export function CollapseIcon() {
   return (
     <svg
-      attribute:width="14"
-      attribute:height="14"
+      attribute:width="1.08em"
+      attribute:height="1.08em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
@@ -82,8 +82,8 @@ export function CollapseIcon() {
 export function DirIcon(props: { expanded: ReadonlySignal<boolean> }) {
   return (
     <svg
-      attribute:width="14"
-      attribute:height="14"
+      attribute:width="1.08em"
+      attribute:height="1.08em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
@@ -101,8 +101,8 @@ export function DirIcon(props: { expanded: ReadonlySignal<boolean> }) {
 export function FileIcon(props: { ctx: MiniCodeContext; ext?: string }) {
   return (
     <svg
-      attribute:width="14"
-      attribute:height="14"
+      attribute:width="1.08em"
+      attribute:height="1.08em"
       attribute:viewBox="0 0 16 16"
       attribute:fill="none"
     >
