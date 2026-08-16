@@ -210,7 +210,9 @@ export function MiniCode(opts: MiniCodeOptions) {
       ready.dispatch(true);
     });
 
-  const shadowRootHost = <div class="minicode-shadow-root"></div>;
+  const shadowRootHost = (<div class="minicode-shadow-root"></div>) as HTMLDivElement & {
+    minicode: MiniCodeContext;
+  };
   const shadowRoot = shadowRootHost.attachShadow({ mode: "closed" });
   ctx.shadowRoot = shadowRoot;
   const onkeydown = (e: KeyboardEvent) => {
@@ -284,6 +286,8 @@ export function MiniCode(opts: MiniCodeOptions) {
   ) as HTMLDivElement;
 
   shadowRoot.append(minicodeElem);
+
+  shadowRootHost.minicode = ctx;
 
   return shadowRootHost;
 }

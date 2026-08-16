@@ -68,6 +68,10 @@ export class LspContext {
   onFileChange(relPath: string, eventType: string): void {
     this.lspManager.onFileChange(relPath, eventType);
   }
+
+  terminate() {
+    this.lspManager.dispose();
+  }
 }
 
 function uriToPath(uri: string): string | null {

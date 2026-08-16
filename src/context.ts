@@ -411,4 +411,9 @@ export class MiniCodeContext {
   customEditorKeymap() {
     return this.opts.keymaps?.editor;
   }
+
+  dispose() {
+    this.terminals.data.get().forEach((t) => this.terminals.close(t.id));
+    this.lsp.terminate();
+  }
 }
