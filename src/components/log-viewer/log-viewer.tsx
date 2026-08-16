@@ -7,7 +7,7 @@ import { localSig } from "../../utils/local-signal";
 const LogViewerStyles = css`
   .log-overlay {
     position: fixed;
-    top: 34px;
+    top: 2.62em;
     left: 0;
     right: 0;
     bottom: 0;
@@ -15,7 +15,7 @@ const LogViewerStyles = css`
     background: rgba(0, 0, 0, 0.55);
     display: flex;
     flex-direction: column;
-    padding: 12px;
+    padding: 0.92em;
     box-sizing: border-box;
     user-select: none;
   }
@@ -27,11 +27,11 @@ const LogViewerStyles = css`
     min-height: 0;
     background: var(--minicode-bg, #1b1f27);
     border: 1px solid var(--minicode-border, #2a2f3a);
-    border-radius: 8px;
+    border-radius: 0.62em;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
     color: var(--minicode-fg, #cdd3de);
     font-family: var(--minicode-font, ui-monospace, monospace);
-    font-size: 13px;
+    font-size: 1em;
     overflow: hidden;
   }
 
@@ -39,9 +39,9 @@ const LogViewerStyles = css`
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 0.62em;
     flex: 0 0 auto;
-    padding: 10px 12px;
+    padding: 0.77em 0.92em;
     border-bottom: 1px solid var(--minicode-border, #2a2f3a);
     background: var(--minicode-bg, #1b1f27);
   }
@@ -49,13 +49,13 @@ const LogViewerStyles = css`
   .log-title {
     font-weight: 600;
     color: var(--minicode-fg, #cdd3de);
-    margin-right: 4px;
+    margin-right: 0.31em;
   }
 
   .log-filters {
     display: flex;
     flex-direction: row;
-    gap: 6px;
+    gap: 0.46em;
     flex: 1 1 auto;
   }
 
@@ -63,10 +63,10 @@ const LogViewerStyles = css`
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 5px;
-    padding: 4px 9px;
+    gap: 0.38em;
+    padding: 0.31em 0.69em;
     border: 1px solid var(--minicode-border, #2a2f3a);
-    border-radius: 4px;
+    border-radius: 0.31em;
     background: transparent;
     color: var(--minicode-muted, #6b7280);
     font: inherit;
@@ -95,8 +95,8 @@ const LogViewerStyles = css`
     }
 
     & .dot {
-      width: 8px;
-      height: 8px;
+      width: 0.62em;
+      height: 0.62em;
       border-radius: 50%;
       flex: 0 0 auto;
     }
@@ -115,7 +115,7 @@ const LogViewerStyles = css`
 
     & .count {
       color: var(--minicode-muted, #6b7280);
-      font-size: 11px;
+      font-size: 0.85em;
     }
   }
 
@@ -125,9 +125,9 @@ const LogViewerStyles = css`
 
   .log-clear,
   .log-close {
-    padding: 4px 10px;
+    padding: 0.31em 0.77em;
     border: 1px solid var(--minicode-border, #2a2f3a);
-    border-radius: 4px;
+    border-radius: 0.31em;
     background: transparent;
     color: var(--minicode-fg, #cdd3de);
     font: inherit;
@@ -158,7 +158,7 @@ const LogViewerStyles = css`
   .log-row {
     display: flex;
     flex-direction: column;
-    padding: 6px 12px;
+    padding: 0.46em 0.92em;
     border-bottom: 1px solid var(--minicode-border, #2a2f3a);
 
     &:hover {
@@ -170,20 +170,20 @@ const LogViewerStyles = css`
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 0.62em;
   }
 
   .log-time {
     color: var(--minicode-muted, #6b7280);
-    font-size: 11px;
+    font-size: 0.85em;
     flex: 0 0 auto;
   }
 
   .log-badge {
     flex: 0 0 auto;
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-size: 10px;
+    padding: 0.08em 0.46em;
+    border-radius: 0.23em;
+    font-size: 0.77em;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -221,7 +221,7 @@ const LogViewerStyles = css`
     color: var(--minicode-muted, #6b7280);
     cursor: pointer;
     font: inherit;
-    font-size: 11px;
+    font-size: 0.85em;
     padding: 0;
 
     &:hover {
@@ -230,15 +230,15 @@ const LogViewerStyles = css`
   }
 
   .log-details {
-    margin-top: 4px;
-    padding: 6px 8px;
+    margin-top: 0.31em;
+    padding: 0.46em 0.62em;
     background: var(--minicode-editor-bg, #14171d);
     border: 1px solid var(--minicode-border, #2a2f3a);
-    border-radius: 4px;
+    border-radius: 0.31em;
     color: var(--minicode-editor-fg, #cdd3de);
     white-space: pre-wrap;
     word-break: break-word;
-    font-size: 12px;
+    font-size: 0.92em;
     user-select: text;
   }
 `;

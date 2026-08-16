@@ -11,8 +11,8 @@ const TopBarStyles = css`
     align-items: stretch;
     justify-content: stretch;
     flex: 0 0 auto;
-    height: 34px;
-    padding: 0 8px;
+    height: 2.62em;
+    padding: 0 0.62em;
     border-bottom: 1px solid var(--minicode-border, #2a2f3a);
     background: var(--minicode-bg, #1b1f27);
     user-select: none;
@@ -23,7 +23,7 @@ const TopBarStyles = css`
       flex-direction: row;
       align-items: center;
       justify-content: space-between;
-      gap: 4px;
+      gap: 0.31em;
       flex: 0 0 auto;
       user-select: none;
       height: stretch;
@@ -34,7 +34,7 @@ const TopBarStyles = css`
         flex-direction: row;
         align-items: center;
         justify-content: flex-start;
-        gap: 4px;
+        gap: 0.31em;
         flex: 0 0 auto;
       }
 
@@ -43,7 +43,7 @@ const TopBarStyles = css`
         flex-direction: row;
         align-items: center;
         justify-content: flex-end;
-        gap: 4px;
+        gap: 0.31em;
         flex: 0 0 auto;
       }
     }
@@ -53,14 +53,14 @@ const TopBarStyles = css`
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 2.15em;
+    height: 2.15em;
     border: none;
     background: transparent;
     color: var(--minicode-muted, #6b7280);
     cursor: pointer;
     outline: none;
-    border-radius: 4px;
+    border-radius: 0.31em;
     position: relative;
 
     &.custom {
@@ -80,17 +80,17 @@ const TopBarStyles = css`
 
     & .log-badge {
       position: absolute;
-      top: 2px;
-      right: 2px;
-      min-width: 14px;
-      height: 14px;
-      padding: 0 3px;
+      top: 0.15em;
+      right: 0.15em;
+      min-width: 1.08em;
+      height: 1.08em;
+      padding: 0 0.23em;
       box-sizing: border-box;
-      border-radius: 7px;
+      border-radius: 0.54em;
       background: #e06c75;
       color: #ffffff;
-      font-size: 9px;
-      line-height: 14px;
+      font-size: 0.69em;
+      line-height: 1.08em;
       text-align: center;
       pointer-events: none;
       display: none;
@@ -108,22 +108,22 @@ const TopBarStyles = css`
       position: absolute;
       top: 100%;
       right: 0;
-      margin-top: 4px;
-      min-width: 140px;
+      margin-top: 0.31em;
+      min-width: 10.77em;
       background: var(--minicode-bg, #1b1f27);
       border: 1px solid var(--minicode-border, #2a2f3a);
-      border-radius: 4px;
+      border-radius: 0.31em;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       z-index: 100;
-      padding: 4px 0;
+      padding: 0.31em 0;
       font-family: var(--minicode-font, ui-monospace, monospace);
-      font-size: 13px;
+      font-size: 1em;
 
       & .theme-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 6px 12px;
+        padding: 0.46em 0.92em;
         color: var(--minicode-fg, #cdd3de);
         cursor: pointer;
         outline: none;
@@ -142,7 +142,7 @@ const TopBarStyles = css`
         }
 
         & .check {
-          width: 14px;
+          width: 1.08em;
           display: flex;
           align-items: center;
           justify-content: center;

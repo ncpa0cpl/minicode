@@ -56,18 +56,18 @@ const TabsStyles = css`
     & .tab-name {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 7px 10px 7px 12px;
+      gap: 0.46em;
+      padding: 0.54em 0.77em 0.54em 0.92em;
       border: none;
       background: transparent;
       color: var(--minicode-muted, #6b7280);
       font-family: var(--minicode-font, ui-monospace, monospace);
-      font-size: 13px;
+      font-size: 1em;
       line-height: 1.2;
       cursor: pointer;
       outline: none;
       white-space: nowrap;
-      max-width: 200px;
+      max-width: 15.38em;
       overflow: hidden;
 
       & .tab-label {
@@ -76,9 +76,9 @@ const TabsStyles = css`
       }
 
       & .tab-dot {
-        flex: 0 0 6px;
-        width: 6px;
-        height: 6px;
+        flex: 0 0 0.46em;
+        width: 0.46em;
+        height: 0.46em;
         border-radius: 50%;
         background: var(--minicode-accent, #4b9fff);
         visibility: hidden;
@@ -93,7 +93,7 @@ const TabsStyles = css`
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 22px;
+      width: 1.69em;
       border: none;
       background: transparent;
       color: var(--minicode-muted, #6b7280);
@@ -114,7 +114,7 @@ const TabsStyles = css`
       color: var(--minicode-active-fg, #ffffff);
       background: var(--minicode-editor-bg, #1b1f27);
       border-bottom: 2px solid var(--minicode-accent, #4b9fff);
-      padding-bottom: 5px;
+      padding-bottom: 0.38em;
     }
 
     &.active .tab-close {
@@ -151,7 +151,7 @@ const TabsStyles = css`
     justify-content: center;
     color: var(--minicode-muted, #6b7280);
     font-family: var(--minicode-font, ui-monospace, monospace);
-    font-size: 13px;
+    font-size: 1em;
     pointer-events: none;
   }
 `;
@@ -243,6 +243,9 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
               class={{
                 codemirror: true,
                 focused: ctx.tabs.focused.derive((ft) => ft && ft.eq(t.file)),
+              }}
+              style={{
+                fontSize: ctx.tabs.fontSize,
               }}
             >
               {t.view.dom}

@@ -1,3 +1,5 @@
+import { Terminal } from "@xterm/xterm";
+
 export interface TerminalBackend {
   start(dir: string): void | Promise<void>;
   write(data: string): void;
@@ -10,6 +12,7 @@ export type TerminalFactory = (opts: { cols: number; rows: number }) => Terminal
 
 export type TerminalTabData = {
   id: number;
+  xterm: Terminal;
   backend: TerminalBackend;
   termEl: HTMLElement;
   fit: () => void;

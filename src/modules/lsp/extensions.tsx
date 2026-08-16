@@ -233,10 +233,10 @@ async function lspHoverTooltip(
         const more = (
           <div
             style={{
-              marginTop: 4,
+              marginTop: "0.31em",
               color: "var(--minicode-muted, #6b7280)",
               fontStyle: "italic",
-              fontSize: 11,
+              fontSize: "0.85em",
             }}
           >
             ... (truncated)

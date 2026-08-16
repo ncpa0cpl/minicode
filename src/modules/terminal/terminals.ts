@@ -5,6 +5,7 @@ import { TerminalFactory, TerminalTabData } from "./types";
 import { localSig } from "../../utils/local-signal";
 
 export class TerminalsContext {
+  fontSize = sig(16);
   data = sig<TerminalTabData[]>([]);
   isVisible: Signal<boolean>;
   active = sig<number | null>(null);
@@ -27,6 +28,12 @@ export class TerminalsContext {
         this.open();
       }
     }
+
+    this.fontSize.add((fs) => {
+      this.data.get().forEach((t) => {
+        t.xterm.options.fontSize = fs;
+      });
+    });
   }
 
   private getXtermTheme() {
@@ -72,7 +79,7 @@ export class TerminalsContext {
       const { Terminal } = await import("@xterm/xterm");
       const { FitAddon } = await import("@xterm/addon-fit");
       const term = new Terminal({
-        fontSize: 13,
+        fontSize: this.fontSize.get(),
         fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
         theme: this.getXtermTheme(),
       });
@@ -98,6 +105,7 @@ export class TerminalsContext {
         id,
         backend,
         termEl: container,
+        xterm: term,
         fit: () => fitAddon.fit(),
         setTheme: (theme) => {
           term.options.theme = theme;

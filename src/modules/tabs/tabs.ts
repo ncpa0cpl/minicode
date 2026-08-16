@@ -24,6 +24,7 @@ function isBinaryBuffer(buffer: Uint8Array): boolean {
 }
 
 export class TabsContext {
+  fontSize = sig<string | number>("1em");
   data = sig<TabData[]>([]);
   focused = sig<File>();
 

@@ -17,21 +17,21 @@ const ContextMenuStyles = css`
   .context-menu {
     position: fixed;
     z-index: 1001;
-    min-width: 180px;
+    min-width: 13.85em;
     background: var(--minicode-bg, #1b1f27);
     border: 1px solid var(--minicode-border, #2a2f3a);
-    border-radius: 6px;
+    border-radius: 0.46em;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
-    padding: 4px 0;
+    padding: 0.31em 0;
     font-family: var(--minicode-font, ui-monospace, monospace);
-    font-size: 13px;
+    font-size: 1em;
     user-select: none;
   }
 
   .context-menu-item {
     display: flex;
     align-items: center;
-    padding: 6px 14px;
+    padding: 0.46em 1.08em;
     color: var(--minicode-fg, #cdd3de);
     cursor: pointer;
     outline: none;
@@ -55,7 +55,7 @@ const ContextMenuStyles = css`
 
   .context-menu-separator {
     height: 1px;
-    margin: 4px 8px;
+    margin: 0.31em 0.62em;
     background: var(--minicode-border, #2a2f3a);
   }
 `;

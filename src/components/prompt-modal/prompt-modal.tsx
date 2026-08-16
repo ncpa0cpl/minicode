@@ -15,21 +15,21 @@ const PromptModalStyles = css`
   .prompt-modal {
     display: flex;
     flex-direction: column;
-    min-width: 320px;
+    min-width: 24.62em;
     max-width: 90vw;
     background: var(--minicode-bg, #1b1f27);
     border: 1px solid var(--minicode-border, #2a2f3a);
-    border-radius: 8px;
+    border-radius: 0.62em;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-    padding: 16px;
+    padding: 1.23em;
     font-family: var(--minicode-font, ui-monospace, monospace);
-    font-size: 13px;
+    font-size: 1em;
     color: var(--minicode-fg, #cdd3de);
   }
 
   .prompt-title {
-    margin: 0 0 12px 0;
-    font-size: 13px;
+    margin: 0 0 0.92em 0;
+    font-size: 1em;
     font-weight: 600;
     color: var(--minicode-fg, #cdd3de);
     user-select: none;
@@ -38,11 +38,11 @@ const PromptModalStyles = css`
   .prompt-input {
     width: 100%;
     box-sizing: border-box;
-    padding: 8px 10px;
+    padding: 0.62em 0.77em;
     background: var(--minicode-editor-bg, #14171d);
     color: var(--minicode-editor-fg, #cdd3de);
     border: 1px solid var(--minicode-border, #2a2f3a);
-    border-radius: 4px;
+    border-radius: 0.31em;
     font: inherit;
     outline: none;
 
@@ -55,14 +55,14 @@ const PromptModalStyles = css`
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
-    gap: 8px;
-    margin-top: 16px;
+    gap: 0.62em;
+    margin-top: 1.23em;
   }
 
   .prompt-btn {
-    padding: 6px 14px;
+    padding: 0.46em 1.08em;
     border: 1px solid var(--minicode-border, #2a2f3a);
-    border-radius: 4px;
+    border-radius: 0.31em;
     background: transparent;
     color: var(--minicode-fg, #cdd3de);
     font: inherit;

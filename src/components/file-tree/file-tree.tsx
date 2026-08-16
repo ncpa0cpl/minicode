@@ -28,14 +28,14 @@ const FileTreeStyles = css`
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--minicode-border, #2a2f3a) transparent;
-    padding: 6px 0;
+    padding: 0.46em 0;
     font-family: var(--minicode-font, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
-    font-size: 13px;
+    font-size: 1em;
     line-height: 1.4;
     color: var(--minicode-fg, #cdd3de);
     background: var(--minicode-bg, #1b1f27);
     user-select: none;
-    padding-left: 8px;
+    padding-left: 0.62em;
     box-sizing: border-box;
 
     & .row {
@@ -43,9 +43,9 @@ const FileTreeStyles = css`
       flex-direction: row;
       align-items: center;
       width: 100%;
-      padding-left: calc(var(--level) * 16);
-      padding-right: 8px;
-      padding-block: 2px;
+      padding-left: calc(var(--level) * 1.23em);
+      padding-right: 0.62em;
+      padding-block: 0.15em;
       border: none;
       background: transparent;
       color: inherit;
@@ -66,7 +66,7 @@ const FileTreeStyles = css`
       &.dir {
         & .chevron {
           transition: transform 120ms ease;
-          flex: 0 0 16px;
+          flex: 0 0 1.23em;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -78,7 +78,7 @@ const FileTreeStyles = css`
       }
 
       & .icon {
-        flex: 0 0 16px;
+        flex: 0 0 1.23em;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -90,7 +90,7 @@ const FileTreeStyles = css`
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        padding-left: 4px;
+        padding-left: 0.31em;
       }
     }
 
@@ -103,9 +103,9 @@ const FileTreeStyles = css`
     }
 
     & .row .collapse-btn {
-      flex: 0 0 18px;
-      width: 18px;
-      height: 18px;
+      flex: 0 0 1.38em;
+      width: 1.38em;
+      height: 1.38em;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -119,7 +119,7 @@ const FileTreeStyles = css`
       transition:
         opacity 100ms ease,
         background 100ms ease;
-      border-radius: 3px;
+      border-radius: 0.23em;
 
       &:hover {
         color: var(--minicode-fg, #cdd3de);
@@ -138,8 +138,8 @@ const FileTreeStyles = css`
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    padding: 6px 8px;
-    margin-bottom: 4px;
+    padding: 0.46em 0.62em;
+    margin-bottom: 0.31em;
     border-bottom: 1px solid var(--minicode-border, #2a2f3a);
     font-weight: 600;
     color: var(--minicode-fg, #cdd3de);
@@ -159,9 +159,9 @@ const FileTreeStyles = css`
     }
 
     & .collapse-btn {
-      flex: 0 0 18px;
-      width: 18px;
-      height: 18px;
+      flex: 0 0 1.38em;
+      width: 1.38em;
+      height: 1.38em;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -171,7 +171,7 @@ const FileTreeStyles = css`
       cursor: pointer;
       outline: none;
       padding: 0;
-      border-radius: 3px;
+      border-radius: 0.23em;
       opacity: 0.6;
       transition:
         opacity 100ms ease,
@@ -186,7 +186,7 @@ const FileTreeStyles = css`
   }
 
   .resizer {
-    flex: 0 0 4px;
+    flex: 0 0 0.31em;
     align-self: stretch;
     cursor: col-resize;
     background: var(--minicode-border, #2a2f3a);
@@ -202,17 +202,17 @@ const FileTreeStyles = css`
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 6px;
-    padding: 4px 8px 4px 0;
+    gap: 0.46em;
+    padding: 0.31em 0.62em 0.31em 0;
     color: var(--minicode-muted, #6b7280);
-    font-size: 12px;
+    font-size: 0.92em;
     user-select: none;
   }
 
   .tree-loading-spinner {
-    flex: 0 0 12px;
-    width: 12px;
-    height: 12px;
+    flex: 0 0 0.92em;
+    width: 0.92em;
+    height: 0.92em;
     border: 1.5px solid var(--minicode-border, #2a2f3a);
     border-top-color: var(--minicode-accent, #4b9fff);
     border-radius: 50%;
@@ -337,7 +337,7 @@ function FileTreeDirectory(props: {
       <button
         type="button"
         class={{ row: true, dir: true, expanded }}
-        style={{ "--level": level }}
+        style={{ "--level": String(level) }}
         onclick={toggle}
         oncontextmenu={(e: MouseEvent) => onContextMenu(e, dir)}
       >
@@ -362,7 +362,7 @@ function FileTreeDirectory(props: {
       <div class={{ dirfiles: true, collapsed: expanded.derive((e) => !e) }}>
         {dir.isLoading!.derive((l) =>
           l && !dir.isLoaded ? (
-            <div class="tree-loading-row" style={{ "--level": level + 1 }}>
+            <div class="tree-loading-row" style={{ "--level": String(level + 1) }}>
               <span class="tree-loading-spinner"></span>
               <span>Loading…</span>
             </div>
@@ -419,7 +419,7 @@ function FileTreeFile(props: {
     <button
       type="button"
       class={{ row: true, active }}
-      style={{ "--level": level }}
+      style={{ "--level": String(level) }}
       onclick={() => ctx.tabs.open(file)}
       oncontextmenu={(e: MouseEvent) => onContextMenu(e, file)}
     >

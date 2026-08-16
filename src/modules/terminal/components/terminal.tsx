@@ -53,7 +53,7 @@ const TerminalStyles = css`
   }
 
   .terminal-resizer {
-    flex: 0 0 4px;
+    flex: 0 0 0.31em;
     cursor: row-resize;
     background: var(--minicode-border, #2a2f3a);
     transition: background 120ms ease;
@@ -74,7 +74,7 @@ const TerminalStyles = css`
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
-    height: 32px;
+    height: 2.46em;
   }
 
   .terminal-tab {
@@ -87,13 +87,13 @@ const TerminalStyles = css`
     & .terminal-tab-name {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
+      gap: 0.46em;
+      padding: 0.46em 0.77em;
       border: none;
       background: transparent;
       color: var(--minicode-muted, #6b7280);
       font-family: var(--minicode-font, ui-monospace, monospace);
-      font-size: 13px;
+      font-size: 1em;
       line-height: 1.2;
       cursor: pointer;
       outline: none;
@@ -104,7 +104,7 @@ const TerminalStyles = css`
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
+      width: 1.54em;
       border: none;
       background: transparent;
       color: var(--minicode-muted, #6b7280);
@@ -136,7 +136,7 @@ const TerminalStyles = css`
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 8px;
+    padding: 0.31em 0.62em;
     border: none;
     background: transparent;
     color: var(--minicode-muted, #6b7280);
@@ -159,7 +159,7 @@ const TerminalStyles = css`
       position: absolute;
       inset: 0;
       overflow: hidden;
-      padding: 4px;
+      padding: 0.31em;
 
       &.focused {
         display: block;

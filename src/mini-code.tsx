@@ -105,6 +105,7 @@ const minicodeStyles = css`
     flex-direction: column;
     width: 100%;
     height: 100%;
+    font-size: 13px;
 
     scrollbar-width: thin;
     scrollbar-color: var(--minicode-border, #2a2f3a) transparent;
@@ -142,7 +143,7 @@ const minicodeStyles = css`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    gap: 1.54em;
     width: 100%;
     height: 100%;
     background: var(--minicode-bg, #1b1f27);
@@ -151,8 +152,8 @@ const minicodeStyles = css`
   }
 
   .loader-spinner {
-    width: 32px;
-    height: 32px;
+    width: 2.46em;
+    height: 2.46em;
     border: 3px solid var(--minicode-border, #2a2f3a);
     border-top-color: var(--minicode-accent, #4b9fff);
     border-radius: 50%;
@@ -166,14 +167,14 @@ const minicodeStyles = css`
   }
 
   .loader-text {
-    font-size: 13px;
+    font-size: 1em;
     color: var(--minicode-muted, #6b7280);
     letter-spacing: 0.04em;
   }
 
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 0.77em;
+    height: 0.77em;
   }
 
   ::-webkit-scrollbar-track {
@@ -182,7 +183,7 @@ const minicodeStyles = css`
 
   ::-webkit-scrollbar-thumb {
     background: var(--minicode-border, #2a2f3a);
-    border-radius: 5px;
+    border-radius: 0.38em;
     border: 2px solid var(--minicode-bg, #1b1f27);
   }
 
