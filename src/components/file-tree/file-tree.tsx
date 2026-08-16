@@ -12,10 +12,18 @@ const MIN_WIDTH = 150;
 const FileTreeStyles = css`
   .file-tree-wrap {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     height: 100%;
     flex: 0 0 auto;
     border-right: 1px solid var(--minicode-border, #2a2f3a);
+  }
+
+  .file-tree-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex: 1 1 auto;
+    overflow: hidden;
   }
 
   .file-tree {
@@ -249,42 +257,44 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
 
   return (
     <div class={FileTreeStyles} style={{ width: width }}>
-      <div class="project-header">
-        <span class="project-name">{ctx.root.name}</span>
-        <button
-          class="collapse-btn"
-          title="Collapse all directories"
-          onclick={(e: MouseEvent) => {
-            e.stopPropagation();
-            ctx.root.collapseAll(true);
-          }}
-        >
-          <CollapseIcon />
-        </button>
-      </div>
-      <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, null)}>
-        {ctx.root.files().$map((f) => {
-          return (
-            <div>
-              {f.derive((f) => {
-                if (f.isDir) {
-                  return (
-                    <FileTreeDirectory
-                      ctx={ctx}
-                      dir={f}
-                      level={0}
-                      onContextMenu={openContextMenu}
-                    />
-                  );
-                } else {
-                  return (
-                    <FileTreeFile ctx={ctx} file={f} level={0} onContextMenu={openContextMenu} />
-                  );
-                }
-              })}
-            </div>
-          );
-        })}
+      <div class="file-tree-content">
+        <div class="project-header">
+          <span class="project-name">{ctx.root.name}</span>
+          <button
+            class="collapse-btn"
+            title="Collapse all directories"
+            onclick={(e: MouseEvent) => {
+              e.stopPropagation();
+              ctx.root.collapseAll(true);
+            }}
+          >
+            <CollapseIcon />
+          </button>
+        </div>
+        <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, null)}>
+          {ctx.root.files().$map((f) => {
+            return (
+              <div>
+                {f.derive((f) => {
+                  if (f.isDir) {
+                    return (
+                      <FileTreeDirectory
+                        ctx={ctx}
+                        dir={f}
+                        level={0}
+                        onContextMenu={openContextMenu}
+                      />
+                    );
+                  } else {
+                    return (
+                      <FileTreeFile ctx={ctx} file={f} level={0} onContextMenu={openContextMenu} />
+                    );
+                  }
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div class="resizer" onpointerdown={onPointerDown}></div>
       {contextMenu.derive((menu) =>

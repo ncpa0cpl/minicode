@@ -27,6 +27,8 @@ export class MiniCodeContext {
     terminalHeight: "minicode:terminal-height",
   } as const;
 
+  uiFontSize = sig<string | number>(18);
+
   rootPath: string;
   root!: File;
   filesystem: Filesystem;

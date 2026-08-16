@@ -105,7 +105,6 @@ const minicodeStyles = css`
     flex-direction: column;
     width: 100%;
     height: 100%;
-    font-size: 13px;
 
     scrollbar-width: thin;
     scrollbar-color: var(--minicode-border, #2a2f3a) transparent;
@@ -258,7 +257,12 @@ export function MiniCode(opts: MiniCodeOptions) {
   const minicodeElem = (
     <div
       class={minicodeStyles}
-      style={ctx.themes.theme.derive(themeToCssVars)}
+      style={sig.derive(ctx.themes.theme, ctx.uiFontSize, (theme, fs) => {
+        return {
+          ...themeToCssVars(theme),
+          fontSize: fs,
+        };
+      })}
       onkeydown={onkeydown}
       onclick={onclick}
       tabIndex={0}
