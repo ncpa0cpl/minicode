@@ -29,6 +29,8 @@ export class TerminalsContext {
       }
     }
 
+    this.fontSize = localSig(this.minicode.storage, MiniCodeContext.storageKeys.termFontSize, 16);
+
     this.fontSize.add((fs) => {
       this.data.get().forEach((t) => {
         t.xterm.options.fontSize = fs;

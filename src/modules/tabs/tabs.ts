@@ -6,6 +6,7 @@ import { File } from "../../files";
 import { Path } from "../../utils/path";
 import { EditorView } from "codemirror";
 import { EditorSelection } from "@codemirror/state";
+import { localSig } from "../../utils/local-signal";
 
 /**
  * Detects whether a buffer contains binary data by checking for null bytes
@@ -24,14 +25,20 @@ function isBinaryBuffer(buffer: Uint8Array): boolean {
 }
 
 export class TabsContext {
-  fontSize = sig<string | number>("1em");
+  fontSize;
   data = sig<TabData[]>([]);
   focused = sig<File>();
 
   constructor(
     private readonly minicode: MiniCodeContext,
     private opts: MiniCodeOptions,
-  ) {}
+  ) {
+    this.fontSize = localSig<string>(
+      this.minicode.storage,
+      MiniCodeContext.storageKeys.editorFontSize,
+      "1em",
+    );
+  }
 
   private get focusedIdx() {
     const f = this.focused.get();

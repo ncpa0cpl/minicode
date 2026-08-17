@@ -2,7 +2,7 @@ import { css } from "embedcss";
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { LogViewer } from "../log-viewer/log-viewer";
-import { checkIcon, logIcon, terminalIcon, themeIcon, SettingsIcon } from "./icons";
+import { checkIcon, logIcon, SettingsIcon, terminalIcon, themeIcon } from "./icons";
 import { Settings } from "../settings/settings";
 
 const TopBarStyles = css`
@@ -177,9 +177,6 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
     <div class={TopBarStyles}>
       <div class="top-bar-segments" onclick={closeMenu}>
         <div class="top-bar-left">
-          <button class="icon-btn" onclick={toggleSettings}>
-            <SettingsIcon />
-          </button>
           {ctx.titlebarCustomLeftButtons().map((spec) => (
             <button
               class={{
@@ -194,6 +191,9 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
           ))}
         </div>
         <div class="top-bar-right">
+          <button class="icon-btn" onclick={toggleSettings}>
+            <SettingsIcon />
+          </button>
           <button class="icon-btn" title="Logs" onclick={() => logViewerOpen.dispatch((v) => !v)}>
             {logIcon()}
             <span class={{ "log-badge": true, "has-count": errorCount.derive((c) => c > 0) }}>

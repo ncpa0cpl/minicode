@@ -3,7 +3,7 @@ import { sig, type ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { type LogLevel, type LogEntry, LOG_LEVELS } from "../../modules/log/log";
 import { localSig } from "../../utils/local-signal";
-import { CloseIcon } from "./icons";
+import { CloseIcon } from "../icons/close";
 
 const LogViewerStyles = css`
   .log-overlay {
@@ -126,7 +126,13 @@ const LogViewerStyles = css`
 
   .log-clear,
   .log-close {
-    padding: 0.31em 0.77em;
+    --btn-size: 2em;
+    padding: unset;
+    height: var(--btn-size);
+    min-width: var(--btn-size);
+    display: flex;
+    justify-content: center;
+    align-items: center;
     border: 1px solid var(--minicode-border, #2a2f3a);
     border-radius: 0.31em;
     background: transparent;
@@ -138,6 +144,10 @@ const LogViewerStyles = css`
     &:hover {
       background: var(--minicode-hover, #232834);
     }
+  }
+
+  .log-clear.log-clear {
+    padding-inline: 0.7em;
   }
 
   .log-list {

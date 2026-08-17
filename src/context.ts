@@ -25,9 +25,12 @@ export class MiniCodeContext {
     terminalVisible: "minicode:terminal-visible",
     fileTreeWidth: "minicode:file-tree-width",
     terminalHeight: "minicode:terminal-height",
+    mainFontSize: "minicode:main-font-size",
+    editorFontSize: "minicode:editor-font-size",
+    termFontSize: "minicode:terminal-font-size",
   } as const;
 
-  uiFontSize = sig<string | number>(18);
+  uiFontSize;
   settingsOpen = sig(false);
 
   rootPath: string;
@@ -64,6 +67,11 @@ export class MiniCodeContext {
     this.keymap = new KeymapContext(this, opts);
 
     this.fileTreeWidth = localSig(this.storage, MiniCodeContext.storageKeys.fileTreeWidth, 360);
+    this.uiFontSize = localSig<string>(
+      this.storage,
+      MiniCodeContext.storageKeys.mainFontSize,
+      "18px",
+    );
   }
 
   private mapLangConfigs(configs: LanguageConfig[]) {

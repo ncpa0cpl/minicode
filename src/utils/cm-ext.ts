@@ -1,6 +1,12 @@
 import { Compartment, Extension } from "@codemirror/state";
-import { KeyBinding, keymap } from "@codemirror/view";
-import { basicSetup, EditorView } from "codemirror";
+import {
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  KeyBinding,
+  keymap,
+  lineNumbers,
+} from "@codemirror/view";
+import { EditorView } from "codemirror";
 import {
   standardKeymap,
   indentMore,
@@ -10,9 +16,39 @@ import {
   deleteLine,
   cursorDocStart,
   cursorDocEnd,
+  defaultKeymap,
+  historyKeymap,
 } from "@codemirror/commands";
 import { foldAll, unfoldAll } from "@codemirror/language";
 import { MiniCodeContext } from "../context";
+import {
+  drawSelection,
+  highlightActiveLine,
+  dropCursor,
+  rectangularSelection,
+} from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import {
+  defaultHighlightStyle,
+  syntaxHighlighting,
+  indentOnInput,
+  bracketMatching,
+  foldGutter,
+} from "@codemirror/language";
+import { history } from "@codemirror/commands";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { closeBrackets, completionKeymap } from "@codemirror/autocomplete";
+import { lintKeymap } from "@codemirror/lint";
+
+const DefaultCmKeymap = [
+  // ...closeBracketsKeymap,
+  ...defaultKeymap,
+  ...searchKeymap,
+  ...historyKeymap,
+  // ...foldKeymap,
+  ...completionKeymap,
+  ...lintKeymap,
+];
 
 export class CmPlugin {
   constructor(
@@ -50,7 +86,27 @@ export class CmEditor {
       root: this.ctx.shadowRoot,
       extensions: [
         keymap.of(this.keymap()),
-        basicSetup,
+
+        // basic setup
+        lineNumbers(),
+        highlightActiveLineGutter(),
+        highlightSpecialChars(),
+        history(),
+        foldGutter(),
+        drawSelection(),
+        dropCursor(),
+        EditorState.allowMultipleSelections.of(true),
+        indentOnInput(),
+        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        bracketMatching(),
+        closeBrackets(),
+        // autocompletion(),
+        rectangularSelection(),
+        // crosshairCursor(),
+        highlightActiveLine(),
+        highlightSelectionMatches(),
+        // basic setup end
+
         EditorView.updateListener.of((u) => {
           if (u.docChanged) {
             this.onChange(u.state.doc.toString());
@@ -127,7 +183,7 @@ export class CmEditor {
       },
     ];
 
-    const result = mergeKeymaps(standardKeymap, customBuiltinKeymaps);
+    const result = mergeKeymaps(DefaultCmKeymap, customBuiltinKeymaps);
 
     if (this.ctx.customEditorKeymap()) {
       return mergeKeymaps(result, this.ctx.customEditorKeymap()!);

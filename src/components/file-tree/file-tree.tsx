@@ -175,9 +175,6 @@ const FileTreeStyles = css`
       padding: 0;
       border-radius: 0.23em;
       opacity: 0.6;
-      transition:
-        opacity 100ms ease,
-        background 100ms ease;
 
       &:hover {
         opacity: 1;

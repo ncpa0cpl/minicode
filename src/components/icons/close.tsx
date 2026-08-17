@@ -7,19 +7,19 @@ export function CloseIcon() {
       attribute:fill="none"
     >
       <line
-        attribute:x1="2"
-        attribute:y1="2"
-        attribute:x2="14"
-        attribute:y2="14"
+        attribute:x1="4"
+        attribute:y1="4"
+        attribute:x2="12"
+        attribute:y2="12"
         attribute:stroke="currentColor"
         attribute:stroke-width="2"
         attribute:stroke-linecap="round"
       />
       <line
-        attribute:x1="14"
-        attribute:y1="2"
-        attribute:x2="14"
-        attribute:y2="2"
+        attribute:x1="12"
+        attribute:y1="4"
+        attribute:x2="4"
+        attribute:y2="12"
         attribute:stroke="currentColor"
         attribute:stroke-width="2"
         attribute:stroke-linecap="round"

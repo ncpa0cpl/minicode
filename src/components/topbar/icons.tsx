@@ -106,7 +106,7 @@ export function SettingsIcon() {
     <svg
       attribute:width="1.23em"
       attribute:height="1.23em"
-      attribute:viewBox="0 0 16 16"
+      attribute:viewBox="0 0 512 512"
       attribute:fill="none"
     >
       <g>
