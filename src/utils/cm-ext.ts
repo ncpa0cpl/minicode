@@ -8,7 +8,6 @@ import {
 } from "@codemirror/view";
 import { EditorView } from "codemirror";
 import {
-  standardKeymap,
   indentMore,
   indentLess,
   cursorLineStart,
@@ -198,7 +197,7 @@ function mergeKeymaps(
   km: ReadonlyArray<KeyBinding>,
 ): Array<KeyBinding> {
   const overrideKeys = new Set(km.map((e) => e.key));
-  const defaultKeymaps = standardKeymap.filter((km) => {
+  const defaultKeymaps = base.filter((km) => {
     if (km.key && overrideKeys.has(km.key)) {
       return false;
     }
@@ -213,5 +212,5 @@ function mergeKeymaps(
     }
     return true;
   });
-  return [...base, ...defaultKeymaps];
+  return [...km, ...defaultKeymaps];
 }
