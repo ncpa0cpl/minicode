@@ -58,6 +58,7 @@ export function createLspExtensions(
         const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
         if (pos == null || pos < 0) return false;
         view.dispatch({ selection: { anchor: pos } });
+        event.preventDefault();
         return jumpToDefinition(view);
       },
       mousemove(event, view) {

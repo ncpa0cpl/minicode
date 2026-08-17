@@ -2,7 +2,8 @@ import { css } from "embedcss";
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { LogViewer } from "../log-viewer/log-viewer";
-import { checkIcon, logIcon, terminalIcon, themeIcon } from "./icons";
+import { checkIcon, logIcon, terminalIcon, themeIcon, SettingsIcon } from "./icons";
+import { Settings } from "../settings/settings";
 
 const TopBarStyles = css`
   .top-bar {
@@ -166,12 +167,19 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
     }
   };
 
+  const toggleSettings = () => {
+    ctx.settingsOpen.dispatch((op) => !op);
+  };
+
   const currentThemeName = ctx.themes.theme.derive((t) => t.name);
 
   return (
     <div class={TopBarStyles}>
       <div class="top-bar-segments" onclick={closeMenu}>
         <div class="top-bar-left">
+          <button class="icon-btn" onclick={toggleSettings}>
+            <SettingsIcon />
+          </button>
           {ctx.titlebarCustomLeftButtons().map((spec) => (
             <button
               class={{
@@ -246,6 +254,7 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
       {logViewerOpen.derive((open) =>
         open ? <LogViewer ctx={ctx} onClose={() => logViewerOpen.dispatch(false)} /> : null,
       )}
+      {ctx.settingsOpen.derive((open) => (open ? <Settings ctx={ctx} /> : null))}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { sig, type ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { type LogLevel, type LogEntry, LOG_LEVELS } from "../../modules/log/log";
 import { localSig } from "../../utils/local-signal";
+import { CloseIcon } from "./icons";
 
 const LogViewerStyles = css`
   .log-overlay {
@@ -325,7 +326,7 @@ export function LogViewer({ ctx, onClose }: { ctx: MiniCodeContext; onClose: () 
               Clear
             </button>
             <button class="log-close" onclick={onClose}>
-              Close
+              <CloseIcon />
             </button>
           </div>
           <div class="log-list">

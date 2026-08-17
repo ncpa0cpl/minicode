@@ -28,6 +28,7 @@ export class MiniCodeContext {
   } as const;
 
   uiFontSize = sig<string | number>(18);
+  settingsOpen = sig(false);
 
   rootPath: string;
   root!: File;
@@ -256,10 +257,22 @@ export class MiniCodeContext {
 
   async createFile(dirPath: string, name: string) {
     try {
-      const filePath = Path.from(dirPath).join(name).toString();
+      const newFilePath = Path.from(dirPath).join(name);
+      const filePath = newFilePath.toString();
       this.logs.debug(`Creating file "${filePath}"`);
       await this.filesystem.writeFile(filePath, "");
       await this.refreshDir(dirPath);
+
+      const parentDir = this.findLoadedFile(newFilePath.dir());
+      if (parentDir) {
+        parentDir.expanded.dispatch(true);
+      }
+      const newFile = this.findLoadedFile(newFilePath);
+      if (newFile) {
+        this.tabs.open(newFile);
+      }
+
+      this.lsp.onFileChange(filePath, "created");
     } catch (err) {
       this.logs.error(`Failed to create file "${name}"`, err);
     }
@@ -267,10 +280,16 @@ export class MiniCodeContext {
 
   async createDirectory(dirPath: string, name: string) {
     try {
-      const dirPathFull = Path.from(dirPath).join(name).toString();
+      const newDirPath = Path.from(dirPath).join(name);
+      const dirPathFull = newDirPath.toString();
       this.logs.debug(`Creating directory "${dirPathFull}"`);
       await this.filesystem.mkdir(dirPathFull);
       await this.refreshDir(dirPath);
+
+      const parentDir = this.findLoadedFile(newDirPath.dir());
+      if (parentDir) {
+        parentDir.expanded.dispatch(true);
+      }
     } catch (err) {
       this.logs.error(`Failed to create directory "${name}"`, err);
     }
@@ -333,6 +352,9 @@ export class MiniCodeContext {
 
       this.tabs.renameTab(oldPath, file.rename(newPath));
       await this.refreshDir(Path.from(oldPath).dir().toString());
+
+      this.lsp.onFileChange(oldPath, "deleted");
+      this.lsp.onFileChange(newPath, "created");
     } catch (err) {
       this.logs.error(`Failed to rename "${file.path}" -> "${newName}"`, err);
     }
@@ -346,6 +368,7 @@ export class MiniCodeContext {
       await this.filesystem.rm(path, { recursive: isDir, force: true });
       this.tabs.close(file);
       await this.refreshDir(Path.from(path).dir().toString());
+      this.lsp.onFileChange(path, "deleted");
     } catch (err) {
       this.logs.error(`Failed to delete "${file.path}"`, err);
     }
@@ -380,6 +403,8 @@ export class MiniCodeContext {
       this.logs.debug(`Copying "${srcPath}" -> "${finalDest}"`);
       await this.filesystem.copyFile(srcPath, finalDest);
       await this.refreshDir(destDir);
+
+      this.lsp.onFileChange(destDir, "created");
     } catch (err) {
       this.logs.error(`Failed to copy "${srcFile.path}" to "${destDir}"`, err);
     }
@@ -397,6 +422,9 @@ export class MiniCodeContext {
 
       await this.refreshDir(destDir);
       await this.refreshDir(Path.from(srcPath).dir().toString());
+
+      this.lsp.onFileChange(srcPath, "deleted");
+      this.lsp.onFileChange(destPath, "created");
     } catch (err) {
       this.logs.error(`Failed to move "${srcFile.path}" to "${destDir}"`, err);
     }

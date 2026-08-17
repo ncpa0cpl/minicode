@@ -177,6 +177,7 @@ export class TabsContext {
           }
           this.minicode.logs.debug(`Saving file "${tab.file.path}" (${content.length} bytes)`);
           await fs.writeFile(tab.file.path, content);
+          this.minicode.lsp.onFileChange(tab.file.path, "change");
         } catch (err) {
           this.minicode.logs.error(`Failed to save file "${tab.file.path}"`, err);
           newTabs.push(tab);
@@ -202,6 +203,7 @@ export class TabsContext {
       await fs.writeFile(file.path, content);
       tab.savedContent = content;
       tab.dirty.dispatch(false);
+      this.minicode.lsp.onFileChange(file.path, "change");
     } catch (err) {
       this.minicode.logs.error(`Failed to save file "${file.path}"`, err);
     }

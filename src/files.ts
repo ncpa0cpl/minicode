@@ -12,6 +12,7 @@ function sortFiles(a: File, b: File) {
   if (dcmp === 0) {
     return collator.compare(a.name, b.name);
   }
+
   return dcmp;
 }
 
