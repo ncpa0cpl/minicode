@@ -25,5 +25,11 @@ export const darkTheme: Theme = {
   whitespace: "#3a3f4b",
   matchingBracket: "#3a4055",
 
+  inputBg: "#232834",
+  inputFg: "#cdd3de",
+  inputBorder: "#2a2f3a",
+  inputHover: "#2c3344",
+  inputFocus: "#4b9fff",
+
   syntax: darkSyntaxStyle,
 };

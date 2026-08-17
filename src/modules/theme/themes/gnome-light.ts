@@ -73,5 +73,11 @@ export const gnomeLightTheme: Theme = {
   whitespace: "#e0e0e0",
   matchingBracket: "#dcdcdc",
 
+  inputBg: "#e0e0e0",
+  inputFg: "#333333",
+  inputBorder: "#c8c8c8",
+  inputHover: "#d4d4d4",
+  inputFocus: "#3584e4",
+
   syntax: gnomeLightSyntax,
 };

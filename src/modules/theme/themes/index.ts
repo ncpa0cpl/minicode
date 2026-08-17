@@ -24,6 +24,12 @@ export interface Theme {
   whitespace: string;
   matchingBracket: string;
 
+  inputBg: string;
+  inputFg: string;
+  inputBorder: string;
+  inputHover: string;
+  inputFocus: string;
+
   fileTypeColors?: Record<string, string>;
 
   syntax?: HighlightStyle;

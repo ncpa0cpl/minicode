@@ -73,5 +73,11 @@ export const gnomeDarkTheme: Theme = {
   whitespace: "#3d3d3d",
   matchingBracket: "#3d3d3d",
 
+  inputBg: "#464646",
+  inputFg: "#eeeeec",
+  inputBorder: "#464646",
+  inputHover: "#555555",
+  inputFocus: "#448ce3",
+
   syntax: gnomeDarkSyntax,
 };

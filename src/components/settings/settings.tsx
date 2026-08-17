@@ -85,7 +85,7 @@ const SettingsStyles = css`
         display: grid;
         grid-template-columns: minmax(12em, 25%) 1fr;
         padding: 0.75em;
-        border-bottom: 1px solid var(--minicode-muted);
+        border-bottom: 1px solid var(--minicode-border, #2a2f3a);
       }
     }
   }
@@ -142,27 +142,32 @@ const FontSizeInputStyle = css`
 
     & input {
       font-size: 1em;
-      background-color: var(--minicode-active);
-      color: var(--minicode-active-fg);
-      border: 1px solid var(--minicode-gutter-fg);
+      background-color: var(--minicode-input-bg, #232834);
+      color: var(--minicode-input-fg, #cdd3de);
+      border: 1px solid var(--minicode-input-border, #2a2f3a);
       width: 4em;
       height: 2em;
       padding: 0px 0.6em;
       box-sizing: border-box;
+      outline: none;
+
+      &:focus {
+        border-color: var(--minicode-input-focus, #4b9fff);
+      }
     }
 
     & button {
       font-size: 1em;
-      background-color: var(--minicode-active);
-      color: var(--minicode-active-fg);
-      border: 1px solid var(--minicode-gutter-fg);
+      background-color: var(--minicode-input-bg, #232834);
+      color: var(--minicode-input-fg, #cdd3de);
+      border: 1px solid var(--minicode-input-border, #2a2f3a);
       outline: none;
       box-sizing: border-box;
       width: 2em;
       height: 2em;
 
       &:hover {
-        background-color: var(--minicode-hover);
+        background-color: var(--minicode-input-hover, #2c3344);
       }
     }
   }
@@ -268,7 +273,7 @@ function MultiUnitFontSizeInput(props: { value: Signal<string> }) {
                 min={0.6}
                 max={4}
                 onChange={(f) => {
-                  props.value.dispatch(f + "em");
+                  props.value.dispatch(f.toFixed(1) + "em");
                 }}
               />
             );
@@ -280,7 +285,7 @@ function MultiUnitFontSizeInput(props: { value: Signal<string> }) {
                 min={8}
                 max={30}
                 onChange={(f) => {
-                  props.value.dispatch(f + "px");
+                  props.value.dispatch(f.toFixed(1) + "px");
                 }}
               />
             );
@@ -309,15 +314,20 @@ function MultiUnitFontSizeInput(props: { value: Signal<string> }) {
 
 const SelectStyles = css`
   .select-container {
-    background-color: var(--minicode-active);
-    color: var(--minicode-active-fg);
-    border: 1px solid var(--minicode-gutter-fg);
+    background-color: var(--minicode-input-bg, #232834);
+    color: var(--minicode-input-fg, #cdd3de);
+    border: 1px solid var(--minicode-input-border, #2a2f3a);
     position: relative;
     height: 2em;
     padding: 0em 0.6em;
 
+    &:hover {
+      background-color: var(--minicode-input-hover, #2c3344);
+    }
+
     & .select-preview {
       line-height: 1.8em;
+      cursor: pointer;
     }
 
     & .select-popover-list {
@@ -335,16 +345,16 @@ const SelectStyles = css`
 
       & .select-button {
         font-size: 0.95em;
-        background-color: var(--minicode-muted);
-        color: var(--minicode-active-fg);
-        border: 1px solid var(--minicode-gutter-fg);
+        background-color: var(--minicode-input-bg, #232834);
+        color: var(--minicode-input-fg, #cdd3de);
+        border: 1px solid var(--minicode-input-border, #2a2f3a);
         outline: none;
         box-sizing: border-box;
         height: 2em;
         z-index: 4;
 
         &:hover {
-          background-color: var(--minicode-selection);
+          background-color: var(--minicode-input-hover, #2c3344);
         }
       }
 

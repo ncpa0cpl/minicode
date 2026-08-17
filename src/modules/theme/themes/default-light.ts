@@ -25,5 +25,11 @@ export const lightTheme: Theme = {
   whitespace: "#dddddd",
   matchingBracket: "#c9d5e5",
 
+  inputBg: "#f0f0f0",
+  inputFg: "#333333",
+  inputBorder: "#cccccc",
+  inputHover: "#e0e0e0",
+  inputFocus: "#007acc",
+
   syntax: lightSyntaxStyle,
 };

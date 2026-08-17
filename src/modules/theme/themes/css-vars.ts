@@ -21,6 +21,11 @@ const UI_TOKEN_MAP: Partial<Record<keyof Theme, string>> = {
   cursor: "--minicode-cursor",
   whitespace: "--minicode-whitespace",
   matchingBracket: "--minicode-matching-bracket",
+  inputBg: "--minicode-input-bg",
+  inputFg: "--minicode-input-fg",
+  inputBorder: "--minicode-input-border",
+  inputHover: "--minicode-input-hover",
+  inputFocus: "--minicode-input-focus",
   fileTypeColors: "--minicode-file-type-colors",
 };
 
