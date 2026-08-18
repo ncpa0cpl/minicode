@@ -94,6 +94,7 @@ export class TerminalsContext {
       container._initDir = dirPath ?? this.minicode.rootPath;
       container._logger = this.minicode.logs;
 
+      container.style.display = "block";
       container.style.width = "100%";
       container.style.height = "100%";
 
@@ -161,7 +162,7 @@ export class TerminalsContext {
   }
 }
 
-class TerminalMounter extends HTMLDivElement {
+class TerminalMounter extends HTMLElement {
   _tabData?: TerminalTabData;
   _termFactory?: TerminalFactory;
   _initDir?: string;
@@ -171,38 +172,38 @@ class TerminalMounter extends HTMLDivElement {
     const term = this._tabData!.xterm;
     term.open(this);
 
-    requestAnimationFrame(async () => {
-      try {
-        const cols = term.cols;
-        const rows = term.rows;
-        const backend = this._termFactory!({ cols, rows });
+    requestAnimationFrame(() => {
+      this._tabData!.fit();
 
-        this._logger!.debug(`Opening terminal #${this._tabData!.id} (${cols}x${rows})`);
+      requestAnimationFrame(async () => {
+        try {
+          const cols = term.cols;
+          const rows = term.rows;
+          const backend = this._termFactory!({ cols, rows });
 
-        this._tabData!.backend = backend;
+          this._logger!.debug(`Opening terminal #${this._tabData!.id} (${cols}x${rows})`);
 
-        const onDataDispose = term.onData((data) => backend.write(data));
-        const onBackendDataDispose = backend.onData((data) => term.write(data));
-        const onResizeDispose = term.onResize(({ cols, rows }) => backend.resize(cols, rows));
+          this._tabData!.backend = backend;
 
-        this._tabData!.cleanup = () => {
-          onDataDispose.dispose();
-          onBackendDataDispose();
-          onResizeDispose.dispose();
-          backend.dispose();
-          term.dispose();
-        };
+          const onDataDispose = term.onData((data) => backend.write(data));
+          const onBackendDataDispose = backend.onData((data) => term.write(data));
+          const onResizeDispose = term.onResize(({ cols, rows }) => backend.resize(cols, rows));
 
-        await backend.start(this._initDir!);
+          this._tabData!.cleanup = () => {
+            onDataDispose.dispose();
+            onBackendDataDispose();
+            onResizeDispose.dispose();
+            backend.dispose();
+            term.dispose();
+          };
 
-        requestAnimationFrame(() => {
-          this._tabData!.fit();
-        });
-      } catch (err) {
-        this._logger!.error("Failed to open terminal", err);
-      }
+          await backend.start(this._initDir!);
+        } catch (err) {
+          this._logger!.error("Failed to open terminal", err);
+        }
+      });
     });
   }
 }
 
-window.customElements.define("terminal-mounter", TerminalMounter, { extends: "div" });
+window.customElements.define("terminal-mounter", TerminalMounter);
