@@ -6,7 +6,7 @@
       "name": "minicode",
       "dependencies": {
         "@ncpa0cpl/vanilla-jsx": "^0.0.1-alpha.50",
-        "embedcss": "^0.0.3",
+        "embedcss": "^0.0.5",
       },
       "devDependencies": {
         "@codemirror/lsp-client": "^6.2.5",
@@ -317,7 +317,7 @@
 
     "dunder-proto": ["dunder-proto@1.0.1", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.1", "es-errors": "^1.3.0", "gopd": "^1.2.0" } }, "sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A=="],
 
-    "embedcss": ["embedcss@0.0.3", "", {}, "sha512-LW57t8bpbLsCPi1SFEIx2H9dPGf/5MROj1XL8Rd2yP6lr1bbihQC1mue3cHXr0eGy1gJtY+oH76ekEH0vWmXQA=="],
+    "embedcss": ["embedcss@0.0.5", "", {}, "sha512-iNOJJ6wZVk32ruQiA+1aDmpQ++JtSXjVMBupYJSmNlWpQ7jNEUhJZUk/fJYabMf8z4ig3cKYOtEY2sFxtibiZQ=="],
 
     "entities": ["entities@2.2.0", "", {}, "sha512-p92if5Nz619I0w+akJrLZH0MX0Pb5DX39XOwQTtXSdQQOaYH03S1uIQp4mhOZtAXrxq4ViO67YTiLBo2638o9A=="],
 

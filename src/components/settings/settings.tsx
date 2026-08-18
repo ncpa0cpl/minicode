@@ -2,6 +2,7 @@ import { css } from "embedcss";
 import { CloseIcon } from "../icons/close";
 import { MiniCodeContext } from "../../context";
 import { sig, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
+import { editorCommands } from "../../utils/cm-ext";
 
 const SettingsStyles = css`
   .settings-overlay {
@@ -127,6 +128,10 @@ export function Settings({ ctx }: { ctx: MiniCodeContext }) {
                   ctx.terminals.fontSize.dispatch(f);
                 }}
               />
+            </div>
+            <div class="settings-setting keybindings-setting">
+              <span>Custom Keybinds</span>
+              <KeybindingsSection ctx={ctx} />
             </div>
           </div>
         </div>
@@ -318,16 +323,35 @@ const SelectStyles = css`
     color: var(--minicode-input-fg, #cdd3de);
     border: 1px solid var(--minicode-input-border, #2a2f3a);
     position: relative;
-    height: 2em;
-    padding: 0em 0.6em;
+    display: inline-block;
+    box-sizing: border-box;
+    cursor: pointer;
+    min-width: 3em;
 
     &:hover {
       background-color: var(--minicode-input-hover, #2c3344);
     }
 
+    & .select-sizer {
+      visibility: hidden;
+      white-space: nowrap;
+      height: 1.8em;
+      padding: 0em 0.6em;
+      display: inline-block;
+    }
+
     & .select-preview {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 0em 0.6em;
       line-height: 1.8em;
-      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
     }
 
     & .select-popover-list {
@@ -337,6 +361,10 @@ const SelectStyles = css`
       left: 0;
       right: 0;
       z-index: 5;
+      max-height: 12em;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background-color: var(--minicode-input-bg);
 
       &.expanded {
         display: flex;
@@ -350,7 +378,13 @@ const SelectStyles = css`
         border: 1px solid var(--minicode-input-border, #2a2f3a);
         outline: none;
         box-sizing: border-box;
-        height: 2em;
+        min-height: 2em;
+        padding: 0.3em 0.6em;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 0 0 auto;
         z-index: 4;
 
         &:hover {
@@ -374,34 +408,238 @@ const SelectStyles = css`
 function Select(props: {
   options: Array<string>;
   initialValue: string;
-  onChange: (v: string) => void;
+  onChange: (v: string) => boolean | void;
 }) {
   const expanded = sig(false);
   const selected = sig(props.initialValue);
+  const longest = props.options.reduce((a, b) => (b.length > a.length ? b : a), props.initialValue);
 
-  const clickHandler = (opt: string) => () => {
-    props.onChange(opt);
-    selected.dispatch(opt);
+  const clickHandler = (opt: string) => (ev: Event) => {
+    ev.stopPropagation();
     expanded.dispatch(false);
+    const result = props.onChange(opt);
+    if (result != null && result === false) return;
+    selected.dispatch(opt);
   };
 
   return (
     <div class={SelectStyles}>
-      <span class="select-preview" onclick={() => expanded.dispatch((e) => !e)}>
-        {selected}
-      </span>
-      <div
+      <div class="select-container" onclick={() => expanded.dispatch((e) => !e)}>
+        <span class="select-sizer">{longest}</span>
+        <span class="select-preview">{selected}</span>
+        <div
+          class={{
+            "select-popover-list": true,
+            expanded,
+          }}
+        >
+          {props.options.map((opt) => (
+            <button class="select-button" onclick={clickHandler(opt)}>
+              {opt}
+            </button>
+          ))}
+          <div
+            class="select-backdrop"
+            onclick={(ev) => {
+              ev.stopPropagation();
+              expanded.dispatch(false);
+            }}
+          ></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const KeybindingsStyles = css`
+  .keybindings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+  }
+
+  .keybind-row {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5em;
+    align-items: center;
+  }
+
+  .key-capture-input {
+    font-size: 1em;
+    background-color: var(--minicode-input-bg, #232834);
+    color: var(--minicode-input-fg, #cdd3de);
+    border: 1px solid var(--minicode-input-border, #2a2f3a);
+    width: 12em;
+    height: 2em;
+    padding: 0px 0.6em;
+    box-sizing: border-box;
+    outline: none;
+    cursor: pointer;
+    text-align: center;
+
+    &:focus {
+      border-color: var(--minicode-input-focus, #4b9fff);
+    }
+
+    &.capturing {
+      border-color: var(--minicode-input-focus, #4b9fff);
+      color: var(--minicode-muted, #6b7280);
+    }
+  }
+
+  .keybind-remove {
+    font-size: 1em;
+    background-color: var(--minicode-input-bg, #232834);
+    color: var(--minicode-input-fg, #cdd3de);
+    border: 1px solid var(--minicode-input-border, #2a2f3a);
+    outline: none;
+    box-sizing: border-box;
+    width: 2em;
+    height: 2em;
+    cursor: pointer;
+    flex: 0 0 auto;
+
+    &:hover {
+      background-color: var(--minicode-input-hover, #2c3344);
+    }
+  }
+
+  .keybind-add {
+    font-size: 1em;
+    background-color: var(--minicode-input-bg, #232834);
+    color: var(--minicode-input-fg, #cdd3de);
+    border: 1px solid var(--minicode-input-border, #2a2f3a);
+    outline: none;
+    box-sizing: border-box;
+    width: 2em;
+    height: 2em;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--minicode-input-hover, #2c3344);
+    }
+  }
+`;
+
+function buildKeyString(ev: KeyboardEvent): string {
+  const parts: string[] = [];
+  if (ev.ctrlKey) parts.push("Ctrl");
+  if (ev.shiftKey) parts.push("Shift");
+  if (ev.altKey) parts.push("Alt");
+  if (ev.metaKey) parts.push("Meta");
+
+  const key = ev.key;
+  if (
+    key !== "Control" &&
+    key !== "Alt" &&
+    key !== "Shift" &&
+    key !== "Meta" &&
+    key !== "Dead" &&
+    key !== "Unidentified" &&
+    key !== "Tab"
+  ) {
+    parts.push(key.length === 1 ? key.toLowerCase() : key);
+  }
+
+  return parts.join("-");
+}
+
+function KeyCaptureInput(props: { value: string; onChange: (key: string) => void }) {
+  const capturing = sig(false);
+
+  const handleKeyDown = (ev: KeyboardEvent & { target: HTMLElement }) => {
+    if (!capturing.get()) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    if (ev.key === "Escape") {
+      capturing.dispatch(false);
+      return;
+    }
+
+    const keyStr = buildKeyString(ev);
+    if (keyStr && !["Ctrl", "Shift", "Alt", "Meta"].includes(keyStr)) {
+      props.onChange(keyStr);
+      capturing.dispatch(false);
+    }
+  };
+
+  const handleBlur = () => {
+    capturing.dispatch(false);
+  };
+
+  return (
+    <div class={KeybindingsStyles}>
+      <input
         class={{
-          "select-popover-list": true,
-          expanded,
+          "key-capture-input": true,
+          capturing,
         }}
-      >
-        {props.options.map((opt) => (
-          <button class="select-button" onclick={clickHandler(opt)}>
-            {opt}
-          </button>
-        ))}
-        <div class="select-backdrop" onclick={() => expanded.dispatch(false)}></div>
+        readOnly
+        value={capturing.derive((c) => (c ? "Press key combo..." : props.value || ""))}
+        onkeydown={handleKeyDown}
+        onblur={handleBlur}
+        onclick={() => capturing.dispatch(true)}
+      />
+    </div>
+  );
+}
+
+function KeybindingsSection({ ctx }: { ctx: MiniCodeContext }) {
+  const keybinds = ctx.editorKeybinds;
+  const commandLabels = editorCommands.map((c) => c.label);
+  const labelToId = Object.fromEntries(editorCommands.map((c) => [c.label, c.id]));
+  const idToLabel = Object.fromEntries(editorCommands.map((c) => [c.id, c.label]));
+
+  const addKeybind = () => {
+    const firstCmd = editorCommands[0]?.id ?? "clipboard.copy";
+    keybinds.dispatch([...keybinds.get(), { key: "", command: firstCmd }]);
+  };
+
+  const updateKey = (index: number, key: string) => {
+    const current = keybinds.get();
+    const next = current.map((kb, i) => (i === index ? { ...kb, key } : kb));
+    const deduped = next.filter((kb, i) => i === index || !kb.key || kb.key !== key);
+    if (next.length !== deduped.length) return false;
+    keybinds.dispatch(deduped);
+  };
+
+  const updateCommand = (index: number, label: string): boolean => {
+    const command = labelToId[label] ?? editorCommands[0]?.id ?? "clipboard.copy";
+    const current = keybinds.get();
+    const next = current.map((kb, i) => (i === index ? { ...kb, command } : kb));
+    const deduped = next.filter((kb, i) => i === index || kb.command !== command);
+    if (next.length !== deduped.length) return false;
+    keybinds.dispatch(deduped);
+    return true;
+  };
+
+  const removeKeybind = (index: number) => {
+    ctx.removeEditorKeybind(index);
+  };
+
+  return (
+    <div class={KeybindingsStyles}>
+      <div class="keybindings-section">
+        {keybinds.derive((list) =>
+          list.map((kb, index) => (
+            <div class="keybind-row">
+              <KeyCaptureInput value={kb.key} onChange={(key) => updateKey(index, key)} />
+              <Select
+                options={commandLabels}
+                initialValue={idToLabel[kb.command] ?? commandLabels[0] ?? "Copy"}
+                onChange={(label) => updateCommand(index, label)}
+              />
+              <button class="keybind-remove" onclick={() => removeKeybind(index)}>
+                x
+              </button>
+            </div>
+          )),
+        )}
+        <button class="keybind-add" onclick={addKeybind}>
+          +
+        </button>
       </div>
     </div>
   );

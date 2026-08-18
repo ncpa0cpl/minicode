@@ -15,7 +15,7 @@ import { LspContext } from "./modules/lsp/context";
 import { ThemesContext } from "./modules/theme/theme";
 import { LogContext } from "./modules/log/log";
 import { localSig } from "./utils/local-signal";
-import { CmEditor, CmPlugin } from "./utils/cm-ext";
+import { CmEditor, CmPlugin, type CustomKeybind } from "./utils/cm-ext";
 import { FormatterContext } from "./modules/formatter/context";
 import { KeymapContext } from "./modules/keymap/keymap";
 
@@ -28,6 +28,7 @@ export class MiniCodeContext {
     mainFontSize: "minicode:main-font-size",
     editorFontSize: "minicode:editor-font-size",
     termFontSize: "minicode:terminal-font-size",
+    editorKeybinds: "minicode:editor-keybinds",
   } as const;
 
   uiFontSize;
@@ -48,6 +49,7 @@ export class MiniCodeContext {
   logs: LogContext;
   formatter: FormatterContext;
   keymap: KeymapContext;
+  editorKeybinds: Signal<CustomKeybind[]>;
 
   languageConfigs: Record<string, LanguageConfig> = {};
 
@@ -72,6 +74,16 @@ export class MiniCodeContext {
       MiniCodeContext.storageKeys.mainFontSize,
       "18px",
     );
+    this.editorKeybinds = localSig<CustomKeybind[]>(
+      this.storage,
+      MiniCodeContext.storageKeys.editorKeybinds,
+      [],
+    );
+    this.editorKeybinds.add(() => {
+      this.tabs.data.get().forEach((tab) => {
+        tab.cme?.reconfigureKeymap();
+      });
+    });
   }
 
   private mapLangConfigs(configs: LanguageConfig[]) {
@@ -448,6 +460,17 @@ export class MiniCodeContext {
 
   customEditorKeymap() {
     return this.opts.keymaps?.editor;
+  }
+
+  addEditorKeybind(key: string, command: string) {
+    const current = this.editorKeybinds.get();
+    const filtered = current.filter((kb) => kb.key !== key && kb.command !== command);
+    this.editorKeybinds.dispatch([...filtered, { key, command }]);
+  }
+
+  removeEditorKeybind(index: number) {
+    const current = this.editorKeybinds.get();
+    this.editorKeybinds.dispatch(current.filter((_, i) => i !== index));
   }
 
   dispose() {
