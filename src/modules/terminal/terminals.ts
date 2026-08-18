@@ -3,6 +3,7 @@ import { MiniCodeContext } from "../../context";
 import { MiniCodeOptions } from "../../mini-code";
 import { TerminalFactory, TerminalTabData } from "./types";
 import { localSig } from "../../utils/local-signal";
+import { LogContext } from "../log/log";
 
 export class TerminalsContext {
   fontSize = sig(14);
@@ -88,47 +89,33 @@ export class TerminalsContext {
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
 
-      const container = document.createElement("div");
+      const container = document.createElement("terminal-mounter") as TerminalMounter;
+      container._termFactory = this.factory;
+      container._initDir = dirPath ?? this.minicode.rootPath;
+      container._logger = this.minicode.logs;
+
       container.style.width = "100%";
       container.style.height = "100%";
-      term.open(container);
 
-      const cols = term.cols;
-      const rows = term.rows;
-      const backend = this.factory({ cols, rows });
       const id = this.nextTerminalId++;
-      this.minicode.logs.debug(`Opening terminal #${id} (${cols}x${rows})`);
-
-      const onDataDispose = term.onData((data) => backend.write(data));
-      const onBackendDataDispose = backend.onData((data) => term.write(data));
-      const onResizeDispose = term.onResize(({ cols, rows }) => backend.resize(cols, rows));
 
       const tabData: TerminalTabData = {
         id,
-        backend,
         termEl: container,
         xterm: term,
         fit: () => fitAddon.fit(),
         setTheme: (theme) => {
           term.options.theme = theme;
         },
-        cleanup: () => {
-          onDataDispose.dispose();
-          onBackendDataDispose();
-          onResizeDispose.dispose();
-          backend.dispose();
-          term.dispose();
-        },
+        cleanup: () => {},
       };
+      container._tabData = tabData;
 
-      await backend.start(dirPath ?? this.minicode.rootPath);
       this.minicode.logs.debug(`Terminal #${id} backend started`);
 
       this.data.dispatch((prev) => [...prev, tabData]);
       this.isVisible.dispatch(true);
       this.active.dispatch(id);
-
-      requestAnimationFrame(() => fitAddon.fit());
     } catch (err) {
       this.minicode.logs.error("Failed to open terminal", err);
     }
@@ -173,3 +160,49 @@ export class TerminalsContext {
     }
   }
 }
+
+class TerminalMounter extends HTMLDivElement {
+  _tabData?: TerminalTabData;
+  _termFactory?: TerminalFactory;
+  _initDir?: string;
+  _logger?: LogContext;
+
+  connectedCallback() {
+    const term = this._tabData!.xterm;
+    term.open(this);
+
+    requestAnimationFrame(async () => {
+      try {
+        const cols = term.cols;
+        const rows = term.rows;
+        const backend = this._termFactory!({ cols, rows });
+
+        this._logger!.debug(`Opening terminal #${this._tabData!.id} (${cols}x${rows})`);
+
+        this._tabData!.backend = backend;
+
+        const onDataDispose = term.onData((data) => backend.write(data));
+        const onBackendDataDispose = backend.onData((data) => term.write(data));
+        const onResizeDispose = term.onResize(({ cols, rows }) => backend.resize(cols, rows));
+
+        this._tabData!.cleanup = () => {
+          onDataDispose.dispose();
+          onBackendDataDispose();
+          onResizeDispose.dispose();
+          backend.dispose();
+          term.dispose();
+        };
+
+        await backend.start(this._initDir!);
+
+        requestAnimationFrame(() => {
+          this._tabData!.fit();
+        });
+      } catch (err) {
+        this._logger!.error("Failed to open terminal", err);
+      }
+    });
+  }
+}
+
+window.customElements.define("terminal-mounter", TerminalMounter, { extends: "div" });

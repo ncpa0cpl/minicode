@@ -13,7 +13,7 @@ export type TerminalFactory = (opts: { cols: number; rows: number }) => Terminal
 export type TerminalTabData = {
   id: number;
   xterm: Terminal;
-  backend: TerminalBackend;
+  backend?: TerminalBackend;
   termEl: HTMLElement;
   fit: () => void;
   setTheme: (theme: Record<string, string>) => void;
