@@ -450,6 +450,33 @@ export class MiniCodeContext {
     }
   }
 
+  async expandAll(path: string | Path) {
+    path = Path.from(path);
+
+    let searchFile = this.root;
+
+    const relPath = path.relative(this.root.path, false);
+    for (const seg of relPath.segments()) {
+      if (seg === ".." || !searchFile.isDir) {
+        return undefined;
+      }
+
+      const chidlren = await searchFile.children();
+      const matching = chidlren.find((f) => f.get().name === seg);
+
+      if (!matching) {
+        return undefined;
+      }
+
+      if (matching.get().isDir) {
+        matching.get().expanded.dispatch(true);
+      }
+      searchFile = matching.get();
+    }
+
+    return searchFile;
+  }
+
   titlebarCustomLeftButtons() {
     return this.opts.titleBarButtons?.filter((b) => b.position === "left") ?? [];
   }

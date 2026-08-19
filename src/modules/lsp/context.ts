@@ -54,6 +54,10 @@ export class LspContext {
     const tab = await this.minicode.tabs.open(file);
     if (!tab) return null;
 
+    this.minicode.expandAll(tab.file.path).catch((err) => {
+      this.minicode.logs.error("File Tree expandAll command failed", err);
+    });
+
     // The editor view is assigned in the tab's render callback, which runs
     // asynchronously after the tab data is dispatched. Poll until it's set.
     const deadline = Date.now() + 5000;
