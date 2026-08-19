@@ -184,6 +184,7 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
               }
             }}
             oncontextmenu={(e) => openContextMenu(e, t)}
+            title={t.file.path}
           >
             <button class="tab-name" onclick={() => ctx.tabs.focus(t.file)}>
               <span class={{ "tab-dot": true, dirty: t.dirty }}></span>

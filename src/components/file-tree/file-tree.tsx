@@ -341,6 +341,7 @@ function FileTreeDirectory(props: {
         style={{ "--level": String(level) }}
         onclick={toggle}
         oncontextmenu={(e: MouseEvent) => onContextMenu(e, dir)}
+        title={dir.path}
       >
         <span class="chevron">
           <ChevronIcon />
@@ -423,6 +424,7 @@ function FileTreeFile(props: {
       style={{ "--level": String(level) }}
       onclick={() => ctx.tabs.open(file)}
       oncontextmenu={(e: MouseEvent) => onContextMenu(e, file)}
+      title={file.path}
     >
       <span class="icon">
         <FileIcon ctx={ctx} ext={file.ext} />
