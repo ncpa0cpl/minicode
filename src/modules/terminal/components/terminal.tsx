@@ -238,7 +238,11 @@ export function TerminalPanel({ ctx }: { ctx: MiniCodeContext }) {
           const active = activeTerminalId.derive((id) => id === t.id);
           return (
             <div class={{ "terminal-tab": true, active }}>
-              <button class="terminal-tab-name" onclick={() => activeTerminalId.dispatch(t.id)}>
+              <button
+                class="terminal-tab-name"
+                onclick={() => activeTerminalId.dispatch(t.id)}
+                onauxclick={() => ctx.terminals.close(t.id)}
+              >
                 <span class="tab-label">Terminal {t.id + 1}</span>
               </button>
               <button class="terminal-tab-close" onclick={() => ctx.terminals.close(t.id)}>
