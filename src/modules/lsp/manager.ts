@@ -13,13 +13,12 @@ import type {
   DidCloseTextDocumentParams,
   DidOpenTextDocumentParams,
   Hover,
-  LspTransportFactory,
   Position,
   PublishDiagnosticsParams,
 } from "./types";
 import { toUri as toUriFn } from "./types";
 import type { LogContext } from "../log/log";
-import { LanguageConfig } from "../../mini-code";
+import type { LspServerConfig } from "../../mini-code";
 
 interface OpenDoc {
   version: number;
@@ -28,12 +27,14 @@ interface OpenDoc {
 }
 
 interface LspEntry {
+  id: number;
   client: LSPClient | null;
+  /** Whether this is the primary server for its extensions. */
   primary: boolean;
+  /** Extensions this entry serves (e.g. [".ts", ".tsx", ".js", ".jsx"]). */
+  extensions: string[];
   awaiter: Promise<void>;
 }
-
-export type LspFactoryConfig = Record<string, LspTransportFactory | LspTransportFactory[]>;
 
 const EXT_TO_LANGUAGE_ID: Record<string, string> = {
   ts: "typescript",
@@ -52,18 +53,18 @@ export function languageIdForExt(ext: string): string {
 
 /** Extensions whose hover tooltips are rendered by minicode's custom impl. */
 const CUSTOM_HOVER_EXTS = new Set([
-  "ts",
-  "tsx",
-  "mts",
-  "mtsx",
-  "cts",
-  "ctsx",
-  "js",
-  "jsx",
-  "mjs",
-  "mjsx",
-  "cjs",
-  "cjsx",
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".mtsx",
+  ".cts",
+  ".ctsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".mjsx",
+  ".cjs",
+  ".cjsx",
 ]);
 
 /**
@@ -85,16 +86,52 @@ const FALLBACK_WATCHED_PATTERNS: Record<string, string[]> = {
   cjs: ["jsconfig.json", "package.json"],
 };
 
-/** Convert a simple glob pattern (with `*`) into a RegExp. */
+/** Convert a glob pattern (supporting `**`, `*`, `?`) into a RegExp. */
 function globToRegExp(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-  return new RegExp("^" + escaped + "$");
+  let re = "";
+  let i = 0;
+  while (i < pattern.length) {
+    const c = pattern.charAt(i);
+    if (c === "*" && pattern.charAt(i + 1) === "*") {
+      // `**` — match across path segments (including zero segments)
+      // Consume an optional following `/` so `**/` matches zero-or-more dirs.
+      i += 2;
+      if (pattern.charAt(i) === "/") {
+        re += "(?:.*/)?";
+        i++;
+      } else {
+        re += ".*";
+      }
+    } else if (c === "*") {
+      // `*` — match within a single segment (no `/`)
+      re += "[^/]*";
+      i++;
+    } else if (c === "?") {
+      re += "[^/]";
+      i++;
+    } else if (".+^${}()|[]\\".includes(c)) {
+      re += "\\" + c;
+      i++;
+    } else {
+      re += c;
+      i++;
+    }
+  }
+  return new RegExp("^" + re + "$");
 }
 
 /** Test if a relative file path matches any of the glob patterns. */
 function matchesAnyPattern(relPath: string, patterns: RegExp[]): boolean {
   const basename = relPath.split("/").pop() ?? relPath;
   return patterns.some((re) => re.test(basename) || re.test(relPath));
+}
+
+function normalizeExt(ext: string) {
+  if (ext.length === 0) return ext;
+  if (!ext.startsWith(".")) {
+    ext = "." + ext;
+  }
+  return ext;
 }
 
 interface WatchedFilesRegistration {
@@ -107,36 +144,36 @@ export class LspManager {
   private documents = new Map<string, OpenDoc>();
   private diagnosticsByUri = new Map<string, Map<LSPClient, Diagnostic[]>>();
   private watchedFiles: WatchedFilesRegistration[] = [];
+  private nextLspID = 1;
 
   constructor(
-    private factories: Record<string, LanguageConfig>,
+    private servers: LspServerConfig[],
     private rootUri: string,
     private displayFileFn: DisplayFileFn,
     private logs?: LogContext,
-  ) {}
+  ) {
+    this.servers.forEach((c) => {
+      c.extensions = c.extensions.map(normalizeExt);
+    });
+  }
 
   hasLsp(ext: string | undefined): boolean {
     if (!ext) return false;
-    const config = this.factories["." + ext];
-    return config?.lsp != null;
+    ext = normalizeExt(ext);
+    return this.clients.has(ext) || this.servers.some((s) => s.extensions.includes(ext));
   }
 
   /** Whether minicode's custom hover tooltip should be used for this file. */
   useCustomHover(ext: string | undefined): boolean {
-    return !!ext && CUSTOM_HOVER_EXTS.has(ext);
+    if (!ext) return false;
+    ext = normalizeExt(ext);
+    return CUSTOM_HOVER_EXTS.has(ext);
   }
 
-  /**
-   * Returns the primary LSP client for a file extension, if one is ready.
-   * The primary client owns the editor plugin (`client.plugin(...)`) and
-   * powers the bundled LSP features (signature help, formatting, rename,
-   * go-to-definition, references).
-   */
-  primaryClientFor(ext: string): LSPClient | null {
-    const entries = this.clients.get("." + ext);
-    if (!entries) return null;
-    const primary = entries.find((e) => e.primary);
-    return primary?.client ?? null;
+  getClientsFor(ext: string): LSPClient[] {
+    ext = normalizeExt(ext);
+    const entries = this.clients.get(ext);
+    return (entries ?? []).map((e) => e.client).filter((v) => !!v);
   }
 
   /**
@@ -146,93 +183,114 @@ export class LspManager {
    * even before it is connected — its `didOpen` waits on `client.initializing`.
    */
   ensurePrimaryClient(ext: string): LSPClient | null {
+    ext = normalizeExt(ext);
     const entries = this.getEntries(ext);
-    if (entries.length === 0) return null;
     const primary = entries.find((e) => e.primary);
     return primary?.client ?? null;
   }
 
   private getEntries(ext: string): LspEntry[] {
-    const key = "." + ext;
-    let entries = this.clients.get(key);
+    ext = normalizeExt(ext);
+
+    const entries = this.clients.get(ext);
     if (entries) return entries;
 
-    const config = this.factories[key];
-    if (!config || !config.lsp) return [];
+    const configs = this.servers.filter((s) => s.extensions.includes(ext));
 
-    this.logs?.info(`Creating LSP client(s) for "${key}"`);
-    entries = config.lsp.map((f, i): LspEntry => {
-      const isPrimary = i === 0;
-      const client = new LSPClient({
-        rootUri: this.rootUri,
-        timeout: 60000,
-        sanitizeHTML: (html) => trustHtml(html) as unknown as string,
-        workspace: isPrimary ? (c) => new MinicodeWorkspace(c, this.displayFileFn) : undefined,
-        extensions: [
-          {
-            clientCapabilities: {
-              workspace: {
-                didChangeConfiguration: { dynamicRegistration: true },
-                didChangeWatchedFiles: { dynamicRegistration: true },
-              },
-            },
-          },
-        ],
-        notificationHandlers: {
-          "textDocument/publishDiagnostics": (c, params) => {
-            const p = params as PublishDiagnosticsParams;
-            this.logs?.debug(
-              `LSP publishDiagnostics for "${p.uri}": ${p.diagnostics.length} diagnostics`,
-            );
-            const doc = this.documents.get(p.uri);
-            if (doc) {
-              this.updateDiagnostics(p.uri, c, p.diagnostics as Diagnostic[]);
-            } else {
-              this.logs?.debug(`LSP publishDiagnostics: no open document for "${p.uri}"`);
-            }
-            return true;
-          },
-          "window/logMessage": (_c, params) => {
-            const p = params as { type: number; message: string };
-            if (p.type <= 1) this.logs?.error(`LSP window/logMessage`, p.message);
-            else if (p.type === 2) this.logs?.warn(`LSP window/logMessage`, p.message);
-            else this.logs?.debug(`LSP window/logMessage`, p.message);
-            return true;
-          },
-          "window/showMessage": (_c, params) => {
-            const p = params as { type: number; message: string };
-            if (p.type <= 1) this.logs?.error(`LSP window/showMessage`, p.message);
-            else if (p.type === 2) this.logs?.warn(`LSP window/showMessage`, p.message);
-            else this.logs?.debug(`LSP window/showMessage`, p.message);
-            return true;
-          },
-        },
-        unhandledNotification: (_c, method, _params) => {
-          this.logs?.debug(`LSP unhandled notification: ${method}`);
-        },
-      });
-      const entry: LspEntry = { client, primary: isPrimary, awaiter: null as any };
-      const serverRequestHandler: ServerRequestHandler = (method, params) => {
-        return this.handleServerRequest(client, ext, method, params);
-      };
-      entry.awaiter = (async () => {
-        try {
-          this.logs?.debug(`LSP[${ext}#${i}] awaiting transport`);
-          const transport = await f({ rootUri: this.rootUri });
-          const adapter = adaptTransport(transport, this.logs, serverRequestHandler);
-          this.logs?.debug(`LSP[${ext}#${i}] connecting`);
-          client.connect(adapter);
-          await client.initializing;
-          this.logs?.info(`LSP[${ext}#${i}] initialized (primary=${isPrimary})`);
-          this.setupFallbackFileWatching(client, ext);
-        } catch (err) {
-          this.logs?.error(`Failed to initialize LSP[${ext}#${i}]`, err);
-        }
-      })();
+    const newEntries = configs.map((c, idx) => {
+      this.logs?.info(`Creating LSP client for [${c.extensions.join(", ")}]`);
+      const entry = this.createServerEntry(c, idx === 0);
       return entry;
     });
-    this.clients.set(key, entries);
-    return entries;
+
+    for (const entry of newEntries) {
+      for (const entryExt of entry.extensions) {
+        const list = this.clients.get(entryExt) ?? [];
+        if (list.some((lsp) => lsp === entry)) continue;
+        list.push(entry);
+        this.clients.set(entryExt, list);
+      }
+    }
+
+    return newEntries;
+  }
+
+  private createServerEntry(server: LspServerConfig, isPrimary: boolean): LspEntry {
+    const client = new LSPClient({
+      rootUri: this.rootUri,
+      timeout: 60000,
+      sanitizeHTML: (html) => trustHtml(html) as unknown as string,
+      workspace: isPrimary ? (c) => new MinicodeWorkspace(c, this.displayFileFn) : undefined,
+      extensions: [
+        {
+          clientCapabilities: {
+            workspace: {
+              didChangeConfiguration: { dynamicRegistration: true },
+              didChangeWatchedFiles: { dynamicRegistration: true },
+            },
+          },
+        },
+      ],
+      notificationHandlers: {
+        "textDocument/publishDiagnostics": (c, params) => {
+          const p = params as PublishDiagnosticsParams;
+          this.logs?.debug(
+            `LSP publishDiagnostics for "${p.uri}": ${p.diagnostics.length} diagnostics`,
+          );
+          const doc = this.documents.get(p.uri);
+          if (doc) {
+            this.updateDiagnostics(p.uri, c, p.diagnostics as Diagnostic[]);
+          } else {
+            this.logs?.debug(`LSP publishDiagnostics: no open document for "${p.uri}"`);
+          }
+          return true;
+        },
+        "window/logMessage": (_c, params) => {
+          const p = params as { type: number; message: string };
+          if (p.type <= 1) this.logs?.error(`LSP window/logMessage`, p.message);
+          else if (p.type === 2) this.logs?.warn(`LSP window/logMessage`, p.message);
+          else this.logs?.debug(`LSP window/logMessage`, p.message);
+          return true;
+        },
+        "window/showMessage": (_c, params) => {
+          const p = params as { type: number; message: string };
+          if (p.type <= 1) this.logs?.error(`LSP window/showMessage`, p.message);
+          else if (p.type === 2) this.logs?.warn(`LSP window/showMessage`, p.message);
+          else this.logs?.debug(`LSP window/showMessage`, p.message);
+          return true;
+        },
+      },
+      unhandledNotification: (_c, method, _params) => {
+        this.logs?.debug(`LSP unhandled notification: ${method}`);
+      },
+    });
+    const entry: LspEntry = {
+      id: this.nextLspID++,
+      client,
+      primary: isPrimary,
+      extensions: server.extensions.slice(),
+      awaiter: null as any,
+    };
+    const serverRequestHandler: ServerRequestHandler = (method, params) => {
+      return this.handleServerRequest(client, method, params);
+    };
+    entry.awaiter = (async () => {
+      try {
+        this.logs?.debug(`LSP[${entry.id}] awaiting transport`);
+        const transport = await server.transport({ rootUri: this.rootUri });
+        const adapter = adaptTransport(transport, this.logs, serverRequestHandler);
+        this.logs?.debug(`LSP[${entry.id}] connecting`);
+        client.connect(adapter);
+        await client.initializing;
+        this.logs?.info(`LSP[${entry.id}] initialized`);
+        for (const ext of entry.extensions) {
+          this.setupFallbackFileWatching(client, ext);
+        }
+      } catch (err) {
+        this.logs?.error(`Failed to initialize LSP[${entry.id}]`, err);
+      }
+    })();
+    return entry;
   }
 
   /**
@@ -241,12 +299,7 @@ export class LspManager {
    * the watcher glob patterns are parsed and added to the file-watching
    * registry. All other requests are acknowledged with `result: null`.
    */
-  private handleServerRequest(
-    _client: LSPClient,
-    ext: string,
-    method: string,
-    params: unknown,
-  ): unknown {
+  private handleServerRequest(_client: LSPClient, method: string, params: unknown): unknown {
     if (method === "client/registerCapability") {
       const p = params as {
         registrations: Array<{
@@ -258,14 +311,23 @@ export class LspManager {
       for (const reg of p?.registrations ?? []) {
         if (reg.method === "workspace/didChangeWatchedFiles") {
           const globs = (reg.registerOptions?.watchers ?? [])
-            .map((w) => w.globPattern)
-            .filter((g): g is string => !!g);
+            .map((w): string | null => {
+              const g = w.globPattern as unknown;
+              if (!g) return null;
+              if (typeof g === "string") return g;
+              if (typeof g === "object" && g !== null && "pattern" in g) {
+                const p = (g as { pattern: unknown }).pattern;
+                if (typeof p === "string") return p;
+              }
+              return null;
+            })
+            .filter((g): g is string => g !== null);
           if (globs.length > 0) {
-            this.logs?.debug(`LSP[${ext}]: server registered file watchers: ${globs.join(", ")}`);
+            this.logs?.debug(`LSP: server registered file watchers: ${globs.join(", ")}`);
             this.registerWatchedFiles(_client, globs);
           }
         } else {
-          this.logs?.debug(`LSP[${ext}]: server registered capability "${reg.method}"`);
+          this.logs?.debug(`LSP: server registered capability "${reg.method}"`);
         }
       }
     }
@@ -278,6 +340,8 @@ export class LspManager {
    * register `workspace/didChangeWatchedFiles`.
    */
   private setupFallbackFileWatching(client: LSPClient, ext: string): void {
+    ext = normalizeExt(ext);
+
     const patterns = FALLBACK_WATCHED_PATTERNS[ext];
     if (patterns && patterns.length > 0) {
       this.logs?.debug(`LSP[${ext}]: registering fallback file watchers: ${patterns.join(", ")}`);
@@ -322,6 +386,8 @@ export class LspManager {
     content: string,
     view: EditorView,
   ): Promise<void> {
+    ext = normalizeExt(ext);
+
     const entries = this.getEntries(ext);
     if (entries.length === 0) return;
 
@@ -453,6 +519,8 @@ export class LspManager {
     pos: number,
     doc: Text,
   ): Promise<CompletionList | null> {
+    ext = normalizeExt(ext);
+
     const entries = this.getEntries(ext);
     if (entries.length === 0) return null;
 
@@ -497,6 +565,8 @@ export class LspManager {
   }
 
   async hover(ext: string, filePath: string, pos: number, doc: Text): Promise<Hover | null> {
+    ext = normalizeExt(ext);
+
     const entries = this.getEntries(ext);
     if (entries.length === 0) return null;
 
@@ -577,8 +647,9 @@ export class LspManager {
     this.logs?.debug("LSP manager disposing");
     for (const [, entries] of this.clients) {
       for (const entry of entries) {
-        if (!entry.client) continue;
-        entry.client.disconnect();
+        if (entry?.client) {
+          entry.client.disconnect();
+        }
       }
     }
     this.clients.clear();

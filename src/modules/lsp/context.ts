@@ -15,7 +15,7 @@ export class LspContext {
     opts: MiniCodeOptions,
   ) {
     this.lspManager = new LspManager(
-      minicode.languageConfigs,
+      opts.lsp ?? [],
       toUri(opts.root),
       (uri) => this.displayFile(uri),
       minicode.logs,

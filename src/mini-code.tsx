@@ -76,11 +76,16 @@ export type LanguageConfig = {
   ext: string[];
   /** Codemirror extension for providing the syntax support. */
   spec?: LanguageSpec;
-  /** Language servers to be used for this language. */
-  lsp?: LspTransportFactory[];
   /** Function that can be used to format this language code. */
   fromatter?: FormatterFactory;
   formatOnSave?: boolean;
+};
+
+export type LspServerConfig = {
+  /** Factory that creates the transport to the LSP server. */
+  transport: LspTransportFactory;
+  /** Extensions this server handles (e.g. [".ts", ".tsx", ".js", ".jsx"]). */
+  extensions: string[];
 };
 
 export type MiniCodeOptions = {
@@ -90,6 +95,7 @@ export type MiniCodeOptions = {
   themes?: Theme[];
   syntaxTheme?: HighlightStyle;
   languages?: LanguageConfig[];
+  lsp?: LspServerConfig[];
   terminal?: TerminalFactory;
   storage?: Storage;
   titleBarButtons?: Array<TitleBarButton>;
