@@ -38,7 +38,11 @@ describe("LspManager", () => {
   describe("hasLsp", () => {
     it("returns true for extensions covered by a server", () => {
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(new MockTransport()), extensions: [".ts", ".tsx"] },
+        {
+          name: "test-ls",
+          transport: createMockFactory(new MockTransport()),
+          extensions: [".ts", ".tsx"],
+        },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       expect(mgr.hasLsp("ts")).toBe(true);
@@ -47,7 +51,7 @@ describe("LspManager", () => {
 
     it("returns false for uncovered extensions", () => {
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(new MockTransport()), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(new MockTransport()), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       expect(mgr.hasLsp("go")).toBe(false);
@@ -56,7 +60,11 @@ describe("LspManager", () => {
 
     it("handles extensions with or without leading dot", () => {
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(new MockTransport()), extensions: ["ts", "tsx"] },
+        {
+          name: "test-ls",
+          transport: createMockFactory(new MockTransport()),
+          extensions: ["ts", "tsx"],
+        },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       expect(mgr.hasLsp("ts")).toBe(true);
@@ -68,7 +76,7 @@ describe("LspManager", () => {
     it("returns a client for a covered extension", () => {
       const transport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(transport), extensions: [".ts", ".tsx"] },
+        { name: "test-ls", transport: createMockFactory(transport), extensions: [".ts", ".tsx"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       const client = mgr.ensurePrimaryClient("ts");
@@ -77,7 +85,7 @@ describe("LspManager", () => {
 
     it("returns null for an uncovered extension", () => {
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(new MockTransport()), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(new MockTransport()), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       expect(mgr.ensurePrimaryClient("go")).toBeNull();
@@ -86,7 +94,11 @@ describe("LspManager", () => {
     it("returns the same client instance for extensions sharing a server", () => {
       const transport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(transport), extensions: [".ts", ".tsx", ".js"] },
+        {
+          name: "test-ls",
+          transport: createMockFactory(transport),
+          extensions: [".ts", ".tsx", ".js"],
+        },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       const tsClient = mgr.ensurePrimaryClient("ts");
@@ -101,7 +113,7 @@ describe("LspManager", () => {
     it("shares one client across extensions on the same server", () => {
       const transport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(transport), extensions: [".ts", ".tsx"] },
+        { name: "test-ls", transport: createMockFactory(transport), extensions: [".ts", ".tsx"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       const tsClient = mgr.ensurePrimaryClient("ts");
@@ -113,8 +125,8 @@ describe("LspManager", () => {
       const tsTransport = new AutoRespondTransport();
       const goTransport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(tsTransport), extensions: [".ts"] },
-        { transport: createMockFactory(goTransport), extensions: [".go"] },
+        { name: "test-ls", transport: createMockFactory(tsTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(goTransport), extensions: [".go"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       const tsClient = mgr.ensurePrimaryClient("ts");
@@ -126,8 +138,12 @@ describe("LspManager", () => {
       const tsTransport = new AutoRespondTransport();
       const eslintTransport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(tsTransport), extensions: [".ts", ".tsx"] },
-        { transport: createMockFactory(eslintTransport), extensions: [".ts", ".tsx"] },
+        { name: "test-ls", transport: createMockFactory(tsTransport), extensions: [".ts", ".tsx"] },
+        {
+          name: "test-ls",
+          transport: createMockFactory(eslintTransport),
+          extensions: [".ts", ".tsx"],
+        },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       const primary = mgr.ensurePrimaryClient("ts");
@@ -143,8 +159,8 @@ describe("LspManager", () => {
       const primaryTransport = new AutoRespondTransport();
       const secondaryTransport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(primaryTransport), extensions: [".ts"] },
-        { transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(primaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       mgr.ensurePrimaryClient("ts");
@@ -172,8 +188,8 @@ describe("LspManager", () => {
       const primaryTransport = new AutoRespondTransport();
       const secondaryTransport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(primaryTransport), extensions: [".ts"] },
-        { transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(primaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       mgr.ensurePrimaryClient("ts");
@@ -206,8 +222,8 @@ describe("LspManager", () => {
       const primaryTransport = new AutoRespondTransport();
       const secondaryTransport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(primaryTransport), extensions: [".ts"] },
-        { transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(primaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       mgr.ensurePrimaryClient("ts");
@@ -240,8 +256,8 @@ describe("LspManager", () => {
       }));
 
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(primaryTransport), extensions: [".ts"] },
-        { transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(primaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       mgr.ensurePrimaryClient("ts");
@@ -263,7 +279,7 @@ describe("LspManager", () => {
         items: [],
       }));
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(transport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(transport), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       mgr.ensurePrimaryClient("ts");
@@ -296,8 +312,8 @@ describe("LspManager", () => {
       }));
 
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(primaryTransport), extensions: [".ts"] },
-        { transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(primaryTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       mgr.ensurePrimaryClient("ts");
@@ -319,7 +335,7 @@ describe("LspManager", () => {
       const transport = new AutoRespondTransport();
       transport.handle("textDocument/hover", () => null);
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(transport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(transport), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       mgr.ensurePrimaryClient("ts");
@@ -342,7 +358,7 @@ describe("LspManager", () => {
     it("does not throw with registered watchers for unrelated files", async () => {
       const transport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(transport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(transport), extensions: [".ts"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       mgr.ensurePrimaryClient("ts");
@@ -358,8 +374,8 @@ describe("LspManager", () => {
       const tsTransport = new AutoRespondTransport();
       const goTransport = new AutoRespondTransport();
       const servers: LspServerConfig[] = [
-        { transport: createMockFactory(tsTransport), extensions: [".ts"] },
-        { transport: createMockFactory(goTransport), extensions: [".go"] },
+        { name: "test-ls", transport: createMockFactory(tsTransport), extensions: [".ts"] },
+        { name: "test-ls", transport: createMockFactory(goTransport), extensions: [".go"] },
       ];
       const mgr = new LspManager(servers, ROOT_URI, async () => null);
       expect(mgr.ensurePrimaryClient("ts")).not.toBeNull();

@@ -82,6 +82,7 @@ export type LanguageConfig = {
 };
 
 export type LspServerConfig = {
+  name: string;
   /** Factory that creates the transport to the LSP server. */
   transport: LspTransportFactory;
   /** Extensions this server handles (e.g. [".ts", ".tsx", ".js", ".jsx"]). */

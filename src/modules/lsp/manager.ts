@@ -19,6 +19,7 @@ import type {
 import { toUri as toUriFn } from "./types";
 import type { LogContext } from "../log/log";
 import type { LspServerConfig } from "../../mini-code";
+import { sig, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
 
 interface OpenDoc {
   version: number;
@@ -26,14 +27,18 @@ interface OpenDoc {
   ext: string;
 }
 
-interface LspEntry {
+export type LspStatus = "initializing" | "running" | "exited";
+
+export interface LspEntry {
   id: number;
+  name: string;
   client: LSPClient | null;
   /** Whether this is the primary server for its extensions. */
   primary: boolean;
   /** Extensions this entry serves (e.g. [".ts", ".tsx", ".js", ".jsx"]). */
   extensions: string[];
   awaiter: Promise<void>;
+  status: Signal<LspStatus>;
 }
 
 const EXT_TO_LANGUAGE_ID: Record<string, string> = {
@@ -140,7 +145,7 @@ interface WatchedFilesRegistration {
 }
 
 export class LspManager {
-  private clients = new Map<string, LspEntry[]>();
+  private clients = sig(new Map<string, LspEntry[]>());
   private documents = new Map<string, OpenDoc>();
   private diagnosticsByUri = new Map<string, Map<LSPClient, Diagnostic[]>>();
   private watchedFiles: WatchedFilesRegistration[] = [];
@@ -157,10 +162,18 @@ export class LspManager {
     });
   }
 
+  updateClients(update: (client: Map<string, LspEntry[]>) => void) {
+    this.clients.dispatch((current) => {
+      const copy = new Map(current);
+      update(copy);
+      return copy;
+    });
+  }
+
   hasLsp(ext: string | undefined): boolean {
     if (!ext) return false;
     ext = normalizeExt(ext);
-    return this.clients.has(ext) || this.servers.some((s) => s.extensions.includes(ext));
+    return this.clients.get().has(ext) || this.servers.some((s) => s.extensions.includes(ext));
   }
 
   /** Whether minicode's custom hover tooltip should be used for this file. */
@@ -172,7 +185,7 @@ export class LspManager {
 
   getClientsFor(ext: string): LSPClient[] {
     ext = normalizeExt(ext);
-    const entries = this.clients.get(ext);
+    const entries = this.clients.get().get(ext);
     return (entries ?? []).map((e) => e.client).filter((v) => !!v);
   }
 
@@ -192,7 +205,7 @@ export class LspManager {
   private getEntries(ext: string): LspEntry[] {
     ext = normalizeExt(ext);
 
-    const entries = this.clients.get(ext);
+    const entries = this.clients.get().get(ext);
     if (entries) return entries;
 
     const configs = this.servers.filter((s) => s.extensions.includes(ext));
@@ -205,17 +218,19 @@ export class LspManager {
 
     for (const entry of newEntries) {
       for (const entryExt of entry.extensions) {
-        const list = this.clients.get(entryExt) ?? [];
+        const list = this.clients.get().get(entryExt) ?? [];
         if (list.some((lsp) => lsp === entry)) continue;
         list.push(entry);
-        this.clients.set(entryExt, list);
+        this.updateClients((clients) => {
+          clients.set(entryExt, list);
+        });
       }
     }
 
     return newEntries;
   }
 
-  private createServerEntry(server: LspServerConfig, isPrimary: boolean): LspEntry {
+  private createServerEntry(conf: LspServerConfig, isPrimary: boolean): LspEntry {
     const client = new LSPClient({
       rootUri: this.rootUri,
       timeout: 60000,
@@ -266,10 +281,12 @@ export class LspManager {
     });
     const entry: LspEntry = {
       id: this.nextLspID++,
+      name: conf.name,
       client,
       primary: isPrimary,
-      extensions: server.extensions.slice(),
+      extensions: conf.extensions.slice(),
       awaiter: null as any,
+      status: sig<LspStatus>("initializing"),
     };
     const serverRequestHandler: ServerRequestHandler = (method, params) => {
       return this.handleServerRequest(client, method, params);
@@ -277,16 +294,18 @@ export class LspManager {
     entry.awaiter = (async () => {
       try {
         this.logs?.debug(`LSP[${entry.id}] awaiting transport`);
-        const transport = await server.transport({ rootUri: this.rootUri });
+        const transport = await conf.transport({ rootUri: this.rootUri });
         const adapter = adaptTransport(transport, this.logs, serverRequestHandler);
         this.logs?.debug(`LSP[${entry.id}] connecting`);
         client.connect(adapter);
         await client.initializing;
+        entry.status.dispatch("running");
         this.logs?.info(`LSP[${entry.id}] initialized`);
         for (const ext of entry.extensions) {
           this.setupFallbackFileWatching(client, ext);
         }
       } catch (err) {
+        entry.status.dispatch("exited");
         this.logs?.error(`Failed to initialize LSP[${entry.id}]`, err);
       }
     })();
@@ -645,14 +664,14 @@ export class LspManager {
 
   dispose() {
     this.logs?.debug("LSP manager disposing");
-    for (const [, entries] of this.clients) {
+    for (const [, entries] of this.clients.get()) {
       for (const entry of entries) {
         if (entry?.client) {
           entry.client.disconnect();
         }
       }
     }
-    this.clients.clear();
+    this.clients.dispatch(() => new Map());
     this.documents.clear();
     this.diagnosticsByUri.clear();
     this.watchedFiles = [];
