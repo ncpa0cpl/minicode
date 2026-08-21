@@ -1,11 +1,12 @@
 import { EditorView } from "codemirror";
 import { MiniCodeContext } from "../../context";
 import { MiniCodeOptions } from "../../mini-code";
-import { LspManager } from "./manager";
+import { LspManager, type LspEntry } from "./manager";
 import { toUri } from "./types";
 import { createLspExtensions } from "./extensions";
 import { File } from "../../files";
 import { CmEditor } from "../../utils/cm-ext";
+import type { ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
 
 export class LspContext {
   private lspManager: LspManager;
@@ -71,6 +72,34 @@ export class LspContext {
   /** Forward a filesystem change event to the LSP manager. */
   onFileChange(relPath: string, eventType: string): void {
     this.lspManager.onFileChange(relPath, eventType);
+  }
+
+  /** Returns a signal of all unique LSP entries. */
+  allEntries(): ReadonlySignal<LspEntry[]> {
+    return this.lspManager.allEntries();
+  }
+
+  /**
+   * Restarts the LSP server with the given ID. Disconnects the old client,
+   * creates a fresh one from the same config, and re-attaches all open
+   * editors whose file extension matches the server.
+   */
+  restartLsp(id: number): void {
+    const newEntry = this.lspManager.restartLsp(id);
+    if (!newEntry) return;
+
+    // For primary entries, reconfigure all affected open editors so the
+    // new client's plugin is installed (triggers workspace.openFile →
+    // didOpen through the plugin lifecycle).
+    if (newEntry.primary) {
+      const exts = newEntry.extensions;
+      for (const tab of this.minicode.tabs.data.get()) {
+        if (!tab.cme || !tab.file.ext) continue;
+        const fileExt = tab.file.ext.startsWith(".") ? tab.file.ext : "." + tab.file.ext;
+        if (!exts.includes(fileExt)) continue;
+        this.updatePlugins(tab.cme, tab.file);
+      }
+    }
   }
 
   terminate() {

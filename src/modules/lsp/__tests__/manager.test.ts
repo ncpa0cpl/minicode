@@ -429,4 +429,234 @@ describe("LspManager", () => {
       expect(languageIdForExt("py")).toBe("py");
     });
   });
+
+  describe("restartLsp", () => {
+    it("returns null for a non-existent ID", () => {
+      const mgr = new LspManager([], ROOT_URI, async () => null);
+      expect(mgr.restartLsp(999)).toBeNull();
+    });
+
+    it("creates a new client with the same ID and primary flag", async () => {
+      const transport = new AutoRespondTransport();
+      const servers: LspServerConfig[] = [
+        { name: "tsserver", transport: createMockFactory(transport), extensions: [".ts"] },
+      ];
+      const mgr = new LspManager(servers, ROOT_URI, async () => null);
+      const original = mgr.ensurePrimaryClient("ts");
+      expect(original).not.toBeNull();
+
+      await flush(50);
+
+      // Find the entry ID from the manager's internal clients map
+      const allEntries = (mgr as any).clients?.get?.() ?? new Map();
+      let id = -1;
+      for (const [, list] of allEntries) {
+        const found = list.find((e: any) => e.client === original);
+        if (found) { id = found.id; break; }
+      }
+      expect(id).toBeGreaterThan(0);
+
+      const newEntry = mgr.restartLsp(id);
+      expect(newEntry).not.toBeNull();
+      expect(newEntry!.id).toBe(id);
+      expect(newEntry!.primary).toBe(true);
+      expect(newEntry!.client).not.toBe(original);
+    });
+
+    it("disconnects the old client", async () => {
+      const transport = new AutoRespondTransport();
+      const servers: LspServerConfig[] = [
+        { name: "tsserver", transport: createMockFactory(transport), extensions: [".ts"] },
+      ];
+      const mgr = new LspManager(servers, ROOT_URI, async () => null);
+      const original = mgr.ensurePrimaryClient("ts");
+      await flush(50);
+
+      // Find entry ID
+      const allEntries = (mgr as any).clients?.get?.() ?? new Map();
+      let id = -1;
+      for (const [, list] of allEntries) {
+        const found = list.find((e: any) => e.client === original);
+        if (found) { id = found.id; break; }
+      }
+      expect(id).toBeGreaterThan(0);
+
+      mgr.restartLsp(id);
+
+      // The old client should be disconnected — serverCapabilities is null
+      // after disconnect.
+      expect((original as any).serverCapabilities).toBeNull();
+    });
+
+    it("re-sends didOpen to secondary servers for open documents", async () => {
+      const primaryTransport = new AutoRespondTransport();
+      const secondaryTransport = new AutoRespondTransport();
+      const servers: LspServerConfig[] = [
+        { name: "tsserver", transport: createMockFactory(primaryTransport), extensions: [".ts"] },
+        { name: "eslint", transport: createMockFactory(secondaryTransport), extensions: [".ts"] },
+      ];
+      const mgr = new LspManager(servers, ROOT_URI, async () => null);
+      mgr.ensurePrimaryClient("ts");
+      await flush(50);
+
+      const view = createMockView("const x = 1;");
+      await mgr.openDocument("ts", "foo.ts", "const x = 1;", view);
+      await flush(20);
+
+      // Find the secondary entry ID
+      const allEntries = (mgr as any).clients?.get?.() ?? new Map();
+      let secondaryId = -1;
+      for (const [, list] of allEntries) {
+        const secondary = list.find((e: any) => !e.primary);
+        if (secondary) { secondaryId = secondary.id; break; }
+      }
+      expect(secondaryId).toBeGreaterThan(0);
+
+      // The restart uses the same config (same factory, same transport).
+      // The transport's sent messages will be recorded.
+      secondaryTransport.reset();
+
+      const newEntry = mgr.restartLsp(secondaryId);
+      expect(newEntry).not.toBeNull();
+      expect(newEntry!.primary).toBe(false);
+      await flush(50);
+
+      // The secondary should receive a new didOpen for the open document.
+      const didOpens = secondaryTransport.findAllSent("textDocument/didOpen");
+      expect(didOpens.length).toBeGreaterThan(0);
+    });
+
+    it("cleans up old watched files registrations", async () => {
+      const transport = new AutoRespondTransport();
+      const servers: LspServerConfig[] = [
+        { name: "tsserver", transport: createMockFactory(transport), extensions: [".ts"] },
+      ];
+      const mgr = new LspManager(servers, ROOT_URI, async () => null);
+      mgr.ensurePrimaryClient("ts");
+      await flush(50);
+
+      // Find entry ID
+      const allEntries = (mgr as any).clients?.get?.() ?? new Map();
+      let id = -1;
+      let oldClient: any = null;
+      for (const [, list] of allEntries) {
+        const found = list.find((e: any) => e.primary);
+        if (found) { id = found.id; oldClient = found.client; break; }
+      }
+      expect(id).toBeGreaterThan(0);
+
+      // Simulate a watched file registration
+      (mgr as any).watchedFiles.push({ patterns: [/\.ts$/], client: oldClient });
+
+      mgr.restartLsp(id);
+      await flush(20);
+
+      const watched = (mgr as any).watchedFiles as Array<{ client: any }>;
+      expect(watched.every((w) => w.client !== oldClient)).toBe(true);
+    });
+
+    it("cleans up old diagnostics for the restarted client", async () => {
+      const transport = new AutoRespondTransport();
+      transport.handle("textDocument/diagnostic", () => ({
+        kind: "full",
+        items: [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 5 } }, severity: 1, message: "error" }],
+      }));
+
+      const servers: LspServerConfig[] = [
+        { name: "tsserver", transport: createMockFactory(transport), extensions: [".ts"] },
+      ];
+      const mgr = new LspManager(servers, ROOT_URI, async () => null);
+      mgr.ensurePrimaryClient("ts");
+      await flush(50);
+
+      const view = createMockView("const x = 1;");
+      await mgr.openDocument("ts", "foo.ts", "const x = 1;", view);
+      await flush(50);
+
+      // Find entry ID
+      const allEntries = (mgr as any).clients?.get?.() ?? new Map();
+      let id = -1;
+      let oldClient: any = null;
+      for (const [, list] of allEntries) {
+        const found = list.find((e: any) => e.primary);
+        if (found) { id = found.id; oldClient = found.client; break; }
+      }
+      expect(id).toBeGreaterThan(0);
+
+      // Verify diagnostics exist
+      const diags = (mgr as any).diagnosticsByUri as Map<string, Map<any, any>>;
+      expect(diags.size).toBeGreaterThan(0);
+      for (const [, perClient] of diags) {
+        expect(perClient.has(oldClient)).toBe(true);
+      }
+
+      mgr.restartLsp(id);
+      await flush(20);
+
+      // Old client's diagnostics should be cleared
+      for (const [, perClient] of diags) {
+        expect(perClient.has(oldClient)).toBe(false);
+      }
+    });
+
+    it("preserves open documents across restart", async () => {
+      const transport = new AutoRespondTransport();
+      const servers: LspServerConfig[] = [
+        { name: "tsserver", transport: createMockFactory(transport), extensions: [".ts"] },
+      ];
+      const mgr = new LspManager(servers, ROOT_URI, async () => null);
+      mgr.ensurePrimaryClient("ts");
+      await flush(50);
+
+      const view = createMockView("const x = 1;");
+      await mgr.openDocument("ts", "foo.ts", "const x = 1;", view);
+      await flush(20);
+
+      // Find entry ID
+      const allEntries = (mgr as any).clients?.get?.() ?? new Map();
+      let id = -1;
+      for (const [, list] of allEntries) {
+        const found = list.find((e: any) => e.primary);
+        if (found) { id = found.id; break; }
+      }
+      expect(id).toBeGreaterThan(0);
+
+      mgr.restartLsp(id);
+
+      // The document should still be tracked
+      const docs = (mgr as any).documents as Map<string, any>;
+      expect(docs.has("file:///foo.ts")).toBe(true);
+    });
+  });
+
+  describe("getLspExtensions", () => {
+    it("returns extensions for an existing entry", async () => {
+      const transport = new AutoRespondTransport();
+      const servers: LspServerConfig[] = [
+        { name: "tsserver", transport: createMockFactory(transport), extensions: [".ts", ".tsx"] },
+      ];
+      const mgr = new LspManager(servers, ROOT_URI, async () => null);
+      mgr.ensurePrimaryClient("ts");
+      await flush(50);
+
+      // Find entry ID
+      const allEntries = (mgr as any).clients?.get?.() ?? new Map();
+      let id = -1;
+      for (const [, list] of allEntries) {
+        const found = list[0];
+        if (found) { id = found.id; break; }
+      }
+      expect(id).toBeGreaterThan(0);
+
+      const exts = mgr.getLspExtensions(id);
+      expect(exts).not.toBeNull();
+      expect(exts).toContain(".ts");
+      expect(exts).toContain(".tsx");
+    });
+
+    it("returns null for a non-existent ID", () => {
+      const mgr = new LspManager([], ROOT_URI, async () => null);
+      expect(mgr.getLspExtensions(999)).toBeNull();
+    });
+  });
 });

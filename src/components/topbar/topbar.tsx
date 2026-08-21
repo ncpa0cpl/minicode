@@ -2,7 +2,15 @@ import { css } from "embedcss";
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 import { MiniCodeContext } from "../../context";
 import { LogViewer } from "../log-viewer/log-viewer";
-import { checkIcon, logIcon, SettingsIcon, terminalIcon, themeIcon } from "./icons";
+import {
+  checkIcon,
+  logIcon,
+  lspIcon,
+  restartIcon,
+  SettingsIcon,
+  terminalIcon,
+  themeIcon,
+} from "./icons";
 import { Settings } from "../settings/settings";
 
 const TopBarStyles = css`
@@ -151,11 +159,116 @@ const TopBarStyles = css`
       }
     }
   }
+
+  .lsp-dropdown {
+    position: relative;
+
+    & .lsp-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      min-width: 13em;
+      background: var(--minicode-bg, #1b1f27);
+      border: 1px solid var(--minicode-border, #2a2f3a);
+      border-radius: 0.31em;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 100;
+      font-family: var(--minicode-font, ui-monospace, monospace);
+      font-size: 1em;
+    }
+
+    & .lsp-header {
+      color: var(--minicode-fg);
+      font-size: 1em;
+      margin: 0px;
+      padding: 0.3em 0.6em;
+      border-bottom: 1px solid var(--minicode-border);
+    }
+
+    & .lsp-item {
+      font-size: 0.85em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.3em 0.62em;
+      gap: 0.62em;
+      color: var(--minicode-fg);
+
+      &:hover {
+        background: var(--minicode-hover, #232834);
+      }
+    }
+
+    & .lsp-info {
+      display: flex;
+      align-items: center;
+      gap: 0.46em;
+      pointer-events: none;
+    }
+
+    & .lsp-empty-info {
+      display: flex;
+      align-items: center;
+      gap: 0.46em;
+      pointer-events: none;
+
+      color: var(--minicode-fg);
+      padding: 0.4em 0.6em;
+      font-size: 0.8em;
+    }
+
+    & .lsp-dot {
+      width: 0.62em;
+      height: 0.62em;
+      border-radius: 50%;
+      flex: 0 0 auto;
+
+      &.running {
+        background: #4caf50;
+      }
+      &.initializing {
+        background: #ffc107;
+      }
+      &.exited {
+        background: #e06c75;
+      }
+    }
+
+    & .lsp-restart {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2em;
+      height: 2em;
+      border: none;
+      background: transparent;
+      color: var(--minicode-muted, #6b7280);
+      cursor: pointer;
+      outline: none;
+      border-radius: 0.31em;
+      flex: 0 0 auto;
+
+      &:hover {
+        color: var(--minicode-fg, #cdd3de);
+        background: var(--minicode-input-hover, #2c3344);
+      }
+    }
+
+    & .lsp-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 99;
+    }
+  }
 `;
 
 export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
   const themeMenuOpen = sig(false);
   const logViewerOpen = sig(false);
+  const lspMenuOpen = sig(false);
 
   const errorCount = ctx.logs.logs.derive((logs) => logs.filter((l) => l.level === "error").length);
 
@@ -164,6 +277,10 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
     const dropdown = (e.currentTarget as HTMLElement).querySelector(".theme-dropdown");
     if (dropdown && !dropdown.contains(target)) {
       themeMenuOpen.dispatch(false);
+    }
+    const lspDropdown = (e.currentTarget as HTMLElement).querySelector(".lsp-dropdown");
+    if (lspDropdown && !lspDropdown.contains(target)) {
+      lspMenuOpen.dispatch(false);
     }
   };
 
@@ -200,6 +317,64 @@ export function TopBar({ ctx }: { ctx: MiniCodeContext }) {
               {errorCount.derive((c) => (c > 99 ? "99+" : String(c)))}
             </span>
           </button>
+          <div class="lsp-dropdown">
+            <button
+              class="icon-btn"
+              title="LSP Servers"
+              onclick={() => lspMenuOpen.dispatch((v) => !v)}
+            >
+              {lspIcon()}
+            </button>
+            {lspMenuOpen.derive((open) =>
+              open ? (
+                <div class="lsp-menu">
+                  <h3 class="lsp-header">LSP(s)</h3>
+                  {ctx.lsp.allEntries().derive((entries) =>
+                    entries.length === 0 ? (
+                      <span class="lsp-empty-info">No LSP servers</span>
+                    ) : (
+                      entries.map((entry) => (
+                        <div class="lsp-item">
+                          <span class="lsp-info">
+                            <span
+                              class={{
+                                "lsp-dot": true,
+                                initializing: sig.eq(entry.status, "initializing"),
+                                running: sig.eq(entry.status, "running"),
+                                exited: sig.eq(entry.status, "exited"),
+                              }}
+                            />
+                            <span>{entry.name}</span>
+                          </span>
+                          <button
+                            class="lsp-restart"
+                            title="Restart"
+                            onclick={(ev) => {
+                              ev.stopPropagation();
+                              ctx.lsp.restartLsp(entry.id);
+                            }}
+                          >
+                            {restartIcon()}
+                          </button>
+                        </div>
+                      ))
+                    ),
+                  )}
+                </div>
+              ) : null,
+            )}
+            {lspMenuOpen.derive((open) =>
+              open ? (
+                <div
+                  class="lsp-backdrop"
+                  onclick={(ev) => {
+                    ev.stopPropagation();
+                    lspMenuOpen.dispatch(false);
+                  }}
+                />
+              ) : null,
+            )}
+          </div>
           <div class="theme-dropdown">
             <button class="icon-btn" onclick={() => themeMenuOpen.dispatch((v) => !v)}>
               {themeIcon()}

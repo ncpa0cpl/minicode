@@ -126,3 +126,47 @@ export function SettingsIcon() {
     </svg>
   );
 }
+
+export function lspIcon() {
+  return (
+    <svg
+      attribute:width="1.23em"
+      attribute:height="1.23em"
+      attribute:viewBox="0 0 16 16"
+      attribute:fill="none"
+    >
+      <path
+        attribute:d="M9 1L3 9h4l-1 6 6-8H8l1-6z"
+        attribute:fill="currentColor"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="0.5"
+        attribute:stroke-linejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function restartIcon() {
+  return (
+    <svg
+      attribute:width="1.23em"
+      attribute:height="1.23em"
+      attribute:viewBox="0 0 16 16"
+      attribute:fill="none"
+    >
+      <path
+        attribute:d="M8 3a5 5 0 1 0 4.33 2.5"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+      />
+      <path
+        attribute:d="M12.33 1.5v3h-3"
+        attribute:stroke="currentColor"
+        attribute:stroke-width="1.5"
+        attribute:stroke-linecap="round"
+        attribute:stroke-linejoin="round"
+      />
+    </svg>
+  );
+}

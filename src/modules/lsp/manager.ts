@@ -19,7 +19,7 @@ import type {
 import { toUri as toUriFn } from "./types";
 import type { LogContext } from "../log/log";
 import type { LspServerConfig } from "../../mini-code";
-import { sig, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
+import { sig, Signal, type ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
 
 interface OpenDoc {
   version: number;
@@ -37,6 +37,8 @@ export interface LspEntry {
   primary: boolean;
   /** Extensions this entry serves (e.g. [".ts", ".tsx", ".js", ".jsx"]). */
   extensions: string[];
+  /** The original server config used to create this entry. */
+  config: LspServerConfig;
   awaiter: Promise<void>;
   status: Signal<LspStatus>;
 }
@@ -170,6 +172,26 @@ export class LspManager {
     });
   }
 
+  /**
+   * Returns a derived signal of all unique LSP entries (deduplicated by ID,
+   * since the same entry appears under multiple extensions in the clients map).
+   */
+  allEntries(): ReadonlySignal<LspEntry[]> {
+    return this.clients.derive((map) => {
+      const seen = new Set<number>();
+      const result: LspEntry[] = [];
+      for (const [, entries] of map) {
+        for (const entry of entries) {
+          if (!seen.has(entry.id)) {
+            seen.add(entry.id);
+            result.push(entry);
+          }
+        }
+      }
+      return result;
+    });
+  }
+
   hasLsp(ext: string | undefined): boolean {
     if (!ext) return false;
     ext = normalizeExt(ext);
@@ -202,6 +224,103 @@ export class LspManager {
     return primary?.client ?? null;
   }
 
+  /**
+   * Finds the LSP entry with the given ID, disconnects its client, creates a
+   * fresh client from the same server config, and replaces the old entry.
+   *
+   * For secondary entries, re-sends `textDocument/didOpen` for all currently
+   * open documents matching the entry's extensions.
+   *
+   * For primary entries, the caller is responsible for reconfiguring editor
+   * extensions (which triggers `workspace.openFile` → `didOpen` to the new
+   * server through the plugin lifecycle).
+   *
+   * Returns the new entry, or null if no entry with the given ID exists.
+   */
+  restartLsp(id: number): LspEntry | null {
+    // Find the old entry across all extension lists.
+    let oldEntry: LspEntry | null = null;
+    for (const [, entries] of this.clients.get()) {
+      const found = entries.find((e) => e.id === id);
+      if (found) {
+        oldEntry = found;
+        break;
+      }
+    }
+    if (!oldEntry) return null;
+
+    // Disconnect the old client.
+    if (oldEntry.client) {
+      oldEntry.client.disconnect();
+    }
+
+    // Remove old watched-files registrations for this client.
+    if (oldEntry.client) {
+      this.watchedFiles = this.watchedFiles.filter((w) => w.client !== oldEntry.client);
+    }
+
+    // Clear diagnostics from the old client.
+    for (const [, diags] of this.diagnosticsByUri) {
+      if (oldEntry.client) diags.delete(oldEntry.client);
+    }
+
+    this.logs?.info(`LSP[${oldEntry.id}]: restarting`);
+
+    // Create a new entry from the original config, preserving ID and primary.
+    const newEntry = this.createServerEntry(oldEntry.config, oldEntry.primary, oldEntry);
+
+    // Replace the old entry in the clients map.
+    this.updateClients((clients) => {
+      for (const [, list] of clients) {
+        const idx = list.indexOf(oldEntry!);
+        if (idx >= 0) list[idx] = newEntry;
+      }
+    });
+
+    // For secondary entries, re-send didOpen for all open documents.
+    // Primary didOpen goes through the workspace when editors are reconfigured.
+    if (!newEntry.primary && newEntry.client) {
+      const client = newEntry.client;
+      const entryAwaiter = newEntry.awaiter;
+      const extensions = newEntry.extensions;
+      entryAwaiter.then(() => {
+        if (!client) return;
+        for (const [uri, doc] of this.documents) {
+          if (!extensions.includes(doc.ext)) continue;
+          const content = doc.view.state.doc.toString();
+          const params: DidOpenTextDocumentParams = {
+            textDocument: {
+              uri,
+              languageId: languageIdForExt(doc.ext),
+              version: 0,
+              text: content,
+            },
+          };
+          try {
+            client.notification("textDocument/didOpen", params);
+          } catch (err) {
+            this.logs?.warn(`LSP restart didOpen failed for "${uri}"`, err);
+          }
+        }
+      });
+    }
+
+    return newEntry;
+  }
+
+  /**
+   * Returns the extensions served by the LSP entry with the given ID, or
+   * null if no such entry exists. Used by the caller to determine which
+   * editors need reconfiguration after a restart.
+   */
+  getLspExtensions(id: number): string[] | null {
+    for (const [, entries] of this.clients.get()) {
+      const entry = entries.find((e) => e.id === id);
+      if (entry) return entry.extensions.slice();
+    }
+    return null;
+  }
+
   private getEntries(ext: string): LspEntry[] {
     ext = normalizeExt(ext);
 
@@ -230,7 +349,11 @@ export class LspManager {
     return newEntries;
   }
 
-  private createServerEntry(conf: LspServerConfig, isPrimary: boolean): LspEntry {
+  private createServerEntry(
+    conf: LspServerConfig,
+    isPrimary: boolean,
+    prevEntry?: LspEntry,
+  ): LspEntry {
     const client = new LSPClient({
       rootUri: this.rootUri,
       timeout: 60000,
@@ -279,15 +402,31 @@ export class LspManager {
         this.logs?.debug(`LSP unhandled notification: ${method}`);
       },
     });
-    const entry: LspEntry = {
-      id: this.nextLspID++,
-      name: conf.name,
-      client,
-      primary: isPrimary,
-      extensions: conf.extensions.slice(),
-      awaiter: null as any,
-      status: sig<LspStatus>("initializing"),
-    };
+    let entry: LspEntry;
+    if (prevEntry) {
+      entry = {
+        id: prevEntry.id,
+        name: conf.name,
+        client,
+        primary: isPrimary,
+        extensions: prevEntry.extensions,
+        config: conf,
+        awaiter: null as any,
+        status: prevEntry.status,
+      };
+      entry.status.dispatch("initializing");
+    } else {
+      entry = {
+        id: this.nextLspID++,
+        name: conf.name,
+        client,
+        primary: isPrimary,
+        extensions: conf.extensions.slice(),
+        config: conf,
+        awaiter: null as any,
+        status: sig<LspStatus>("initializing"),
+      };
+    }
     const serverRequestHandler: ServerRequestHandler = (method, params) => {
       return this.handleServerRequest(client, method, params);
     };
