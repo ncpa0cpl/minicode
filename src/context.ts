@@ -33,6 +33,7 @@ export class MiniCodeContext {
 
   uiFontSize;
   settingsOpen = sig(false);
+  fileTreeVisible = sig(true);
 
   rootPath: string;
   root!: File;
@@ -86,7 +87,9 @@ export class MiniCodeContext {
     });
   }
 
-  doesntExist() {}
+  toggleFileTree() {
+    this.fileTreeVisible.dispatch((v) => !v);
+  }
 
   private mapLangConfigs(configs: LanguageConfig[]) {
     for (const conf of configs) {

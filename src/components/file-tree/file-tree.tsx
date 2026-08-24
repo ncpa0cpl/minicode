@@ -253,7 +253,13 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
   };
 
   return (
-    <div class={FileTreeStyles} style={{ width: width }}>
+    <div
+      class={FileTreeStyles}
+      style={{
+        width: width,
+        display: sig.when(ctx.fileTreeVisible, "block", "none"),
+      }}
+    >
       <div class="file-tree-content">
         <div class="project-header">
           <span class="project-name">{ctx.root.name}</span>

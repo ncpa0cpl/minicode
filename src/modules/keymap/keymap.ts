@@ -44,6 +44,12 @@ export class KeymapContext {
       },
     },
     {
+      key: "Ctrl-b",
+      run(ctx) {
+        ctx.toggleFileTree();
+      },
+    },
+    {
       key: "Meta-1",
       run: openTabCmd(0),
     },
