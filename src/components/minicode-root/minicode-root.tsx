@@ -1,20 +1,8 @@
 import { sig, ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
-import { FileTree } from "../file-tree/file-tree";
-import { Tabs } from "../../modules/tabs/components/tabs";
-import { TerminalPanel } from "../../modules/terminal/components/terminal";
-import { TopBar } from "../topbar/topbar";
 import { MiniCodeContext } from "../../context";
 import { stylesheet } from "../../styles";
 import { css } from "embedcss";
-import type { LanguageSpec } from "../../languages";
-import type { HighlightStyle } from "@codemirror/language";
-import { TerminalFactory } from "../../modules/terminal/types";
-import { Theme, ThemeInput, themeToCssVars } from "../../modules/theme/themes";
-import { LspTransportFactory } from "../../modules/lsp/types";
-import { FormatterFactory } from "../../modules/formatter/types";
-import { KeyBinding } from "@codemirror/view";
-import { Path } from "../../utils/path";
-import { TabData } from "../../modules/tabs/types";
+import { themeToCssVars } from "../../modules/theme/themes";
 import { FullscreenLoader } from "../fullscreen-loader/fullscreen-loader";
 
 const minicodeStyles = css`
@@ -144,15 +132,7 @@ export function MinicodeRoot<T>(props: {
       tabIndex={0}
     >
       <style>{stylesheet}</style>
-      {ready.derive((td) =>
-        td ? (
-          <>
-            <div class="minicode-editor">{children(td)}</div>
-          </>
-        ) : (
-          <FullscreenLoader />
-        ),
-      )}
+      {ready.derive((td) => (td ? children(td) : <FullscreenLoader />))}
     </div>
   ) as HTMLDivElement;
 

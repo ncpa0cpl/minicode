@@ -6,13 +6,14 @@ import { MiniCodeContext } from "./context";
 import type { LanguageSpec } from "./languages";
 import type { HighlightStyle } from "@codemirror/language";
 import { TerminalFactory } from "./modules/terminal/types";
-import { Theme, ThemeInput, themeToCssVars } from "./modules/theme/themes";
+import { Theme, ThemeInput } from "./modules/theme/themes";
 import { LspTransportFactory } from "./modules/lsp/types";
 import { FormatterFactory } from "./modules/formatter/types";
 import { KeyBinding } from "@codemirror/view";
 import { Path } from "./utils/path";
 import { TabData } from "./modules/tabs/types";
 import { MinicodeRoot } from "./components/minicode-root/minicode-root";
+import { TopBar } from "./components/topbar/topbar";
 
 export type Dirent = {
   isDirectory(): boolean;
@@ -126,10 +127,13 @@ export function MiniCode(opts: MiniCodeOptions) {
     ready: ready,
     children: () => (
       <>
-        <FileTree ctx={ctx} />
-        <div class="main-panel">
-          <Tabs ctx={ctx} />
-          <TerminalPanel ctx={ctx} />
+        <TopBar ctx={ctx} />
+        <div class="minicode-editor">
+          <FileTree ctx={ctx} />
+          <div class="main-panel">
+            <Tabs ctx={ctx} />
+            <TerminalPanel ctx={ctx} />
+          </div>
         </div>
       </>
     ),
@@ -157,20 +161,29 @@ MiniCode.File = function SingleFileEditor(f: string, opts: Omit<MiniCodeOptions,
     ctx: ctx,
     ready: ready,
     children: (data) => (
-      <div class="main-panel">
-        <div
-          class={{
-            codemirror: true,
-            focused: true,
-          }}
-          style={{
-            fontSize: ctx.tabs.fontSize,
-          }}
-        >
-          {"view" in data ? data.view?.dom : null}
+      <>
+        <TopBar ctx={ctx} />
+        <div class="minicode-editor">
+          <div class="main-panel">
+            <div class="tabs">
+              <div class="tab-editor">
+                <div
+                  class={{
+                    codemirror: true,
+                    focused: true,
+                  }}
+                  style={{
+                    fontSize: ctx.tabs.fontSize,
+                  }}
+                >
+                  {"view" in data ? data.view?.dom : null}
+                </div>
+              </div>
+            </div>
+            <TerminalPanel ctx={ctx} />
+          </div>
         </div>
-        <TerminalPanel ctx={ctx} />
-      </div>
+      </>
     ),
   });
 };
