@@ -86,6 +86,8 @@ export class MiniCodeContext {
     });
   }
 
+  doesntExist() {}
+
   private mapLangConfigs(configs: LanguageConfig[]) {
     for (const conf of configs) {
       for (const ext of conf.ext) {
@@ -189,6 +191,35 @@ export class MiniCodeContext {
         this.logs.error("Filesystem watch error", err);
       }
     })();
+  }
+
+  async loadSingleFile(file: string | Path) {
+    const filepath = Path.from(file);
+
+    this.logs.info(`Loading file "${file}"`);
+    const sf = new File(filepath, false);
+    this.root = new File(filepath.dir(), true, [sf]);
+    const tab = await this.tabs.open(sf);
+
+    if (tab) {
+      const cm = new CmEditor(
+        this,
+        tab.initialContent,
+        (docStr) => {
+          tab.dirty.dispatch(docStr !== tab.savedContent);
+        },
+        8,
+      );
+
+      tab.cme = cm;
+      tab.view = cm.editor();
+
+      this.registerPlugins(cm, tab.file);
+    }
+
+    this.logs.debug("Single file loaded");
+
+    return tab;
   }
 
   /**
