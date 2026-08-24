@@ -64,6 +64,7 @@ export type TitleBarButton = {
 
 export type MinicodeKeybind = {
   key: string;
+  macKey?: string;
   run: (ctx: MiniCodeContext) => void;
 };
 

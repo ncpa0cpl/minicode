@@ -6,6 +6,7 @@ function openTabCmd(idx: number): MinicodeKeybind["run"] {
     const tab = ctx.tabs.data.get().at(idx);
     if (!tab) return;
     ctx.tabs.focus(tab.file);
+    ctx.elem.focus();
   };
 }
 
@@ -50,39 +51,48 @@ export class KeymapContext {
       },
     },
     {
-      key: "Meta-1",
+      key: "Alt-1",
+      macKey: "Meta-1",
       run: openTabCmd(0),
     },
     {
-      key: "Meta-2",
+      key: "Alt-2",
+      macKey: "Meta-2",
       run: openTabCmd(1),
     },
     {
-      key: "Meta-3",
+      key: "Alt-3",
+      macKey: "Meta-3",
       run: openTabCmd(2),
     },
     {
-      key: "Meta-4",
+      key: "Alt-4",
+      macKey: "Meta-4",
       run: openTabCmd(3),
     },
     {
-      key: "Meta-5",
+      key: "Alt-5",
+      macKey: "Meta-5",
       run: openTabCmd(4),
     },
     {
-      key: "Meta-6",
+      key: "Alt-6",
+      macKey: "Meta-6",
       run: openTabCmd(5),
     },
     {
-      key: "Meta-7",
+      key: "Alt-7",
+      macKey: "Meta-7",
       run: openTabCmd(6),
     },
     {
-      key: "Meta-8",
+      key: "Alt-8",
+      macKey: "Meta-8",
       run: openTabCmd(7),
     },
     {
-      key: "Meta-9",
+      key: "Alt-9",
+      macKey: "Meta-9",
       run: openTabCmd(8),
     },
   ];
@@ -93,8 +103,18 @@ export class KeymapContext {
     protected readonly minicode: MiniCodeContext,
     protected readonly opts: MiniCodeOptions,
   ) {
-    for (const { key, run } of KeymapContext.defaultKeybinds) {
-      this.keymap[key] = run;
+    if (navigator.platform.startsWith("Mac")) {
+      for (const { key, macKey, run } of KeymapContext.defaultKeybinds) {
+        if (macKey != null) {
+          this.keymap[macKey] = run;
+        } else {
+          this.keymap[key] = run;
+        }
+      }
+    } else {
+      for (const { key, run } of KeymapContext.defaultKeybinds) {
+        this.keymap[key] = run;
+      }
     }
 
     const km = this.opts.keymaps?.global ?? [];

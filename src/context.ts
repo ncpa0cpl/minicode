@@ -40,6 +40,7 @@ export class MiniCodeContext {
   filesystem: Filesystem;
   abort = new AbortController();
   shadowRoot!: ShadowRoot;
+  elem!: HTMLDivElement;
   private languageCompartment = new Compartment();
   fileTreeWidth: Signal<number>;
   storage: Storage;

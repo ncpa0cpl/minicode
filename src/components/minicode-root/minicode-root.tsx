@@ -139,6 +139,7 @@ export function MinicodeRoot<T>(props: {
   shadowRoot.append(minicodeElem);
 
   shadowRootHost.minicode = ctx;
+  ctx.elem = minicodeElem;
 
   return shadowRootHost;
 }
