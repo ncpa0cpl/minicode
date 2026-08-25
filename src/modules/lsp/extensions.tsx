@@ -18,8 +18,8 @@ import {
   findReferencesKeymap,
 } from "@codemirror/lsp-client";
 import type { LspManager } from "./manager";
-import { languageIdForExt } from "./manager";
-import type { CompletionItem, Hover, MarkupContent } from "./types";
+import { languageIdForExt, lspToCmPos } from "./manager";
+import type { CompletionItem, Hover, MarkupContent, TextEdit } from "./types";
 import { toUri } from "./types";
 import { File } from "../../files";
 import { highlightCodeToHtml, prettifyErrorMessage } from "./highlight";
@@ -147,19 +147,78 @@ async function lspCompletionSource(
   return {
     from,
     to,
-    options: result.items.map(convertCompletionItem),
+    options: result.items.map((item) => convertCompletionItem(manager, file, item)),
     validFor: /[\w$]+/,
   };
 }
 
-function convertCompletionItem(item: CompletionItem): Completion {
+export function convertCompletionItem(
+  manager: LspManager,
+  file: File,
+  item: CompletionItem,
+): Completion {
+  const insertText = item.insertText ?? item.label;
+
+  // Fast path: if the server already included additional edits (the import
+  // statement), apply them together with the main insert in one transaction.
+  // Otherwise resolve lazily on accept — the resolve request may return
+  // additionalTextEdits for auto-import items.
+  const hasEdits = !!item.additionalTextEdits && item.additionalTextEdits.length > 0;
+
   return {
     label: item.label,
     detail: item.detail,
     type: lspKindToCmType(item.kind),
-    apply: item.insertText ?? item.label,
+    apply: hasEdits
+      ? (view, _completion, from, to) => {
+          view.dispatch({
+            changes: [
+              { from, to, insert: insertText },
+              ...editsToChanges(view, item.additionalTextEdits!),
+            ],
+            userEvent: "input.complete",
+          });
+        }
+      : async (view, _completion, from, to) => {
+          // Insert the main completion text first.
+          view.dispatch({
+            changes: { from, to, insert: insertText },
+            userEvent: "input.complete",
+          });
+
+          // Resolve the item to fetch any additional edits (auto-imports).
+          try {
+            const resolved = await manager.resolveCompletion(file.ext!, item);
+            const edits = resolved?.additionalTextEdits;
+            if (edits && edits.length > 0) {
+              view.dispatch({
+                changes: editsToChanges(view, edits),
+                userEvent: "input.complete",
+              });
+            }
+          } catch {
+            // Resolve is best-effort — the completion itself is already applied.
+          }
+        },
     info: extractDoc(item.documentation),
   };
+}
+
+/**
+ * Converts LSP text edits (line/character based) into CodeMirror changes
+ * (offset based) against the current document state.
+ */
+function editsToChanges(
+  view: EditorView,
+  edits: TextEdit[],
+): Array<{ from: number; to: number; insert: string }> {
+  return edits
+    .map((e) => ({
+      from: lspToCmPos(view.state.doc, e.range.start),
+      to: lspToCmPos(view.state.doc, e.range.end),
+      insert: e.newText,
+    }))
+    .sort((a, b) => a.from - b.from);
 }
 
 function lspKindToCmType(kind: number | undefined): Completion["type"] {

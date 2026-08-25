@@ -86,6 +86,11 @@ export interface PublishDiagnosticsParams {
 
 /* Completion */
 
+export interface TextEdit {
+  range: Range;
+  newText: string;
+}
+
 export interface CompletionItem {
   label: string;
   kind?: number;
@@ -95,6 +100,10 @@ export interface CompletionItem {
   insertTextFormat?: number;
   sortText?: string;
   filterText?: string;
+  /** Additional edits to apply after the main completion (e.g. auto-imports). */
+  additionalTextEdits?: TextEdit[];
+  /** Server-side data needed to resolve this item (passed back on resolve). */
+  data?: unknown;
 }
 
 export interface CompletionList {

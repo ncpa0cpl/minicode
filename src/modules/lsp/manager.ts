@@ -366,6 +366,14 @@ export class LspManager {
               didChangeConfiguration: { dynamicRegistration: true },
               didChangeWatchedFiles: { dynamicRegistration: true },
             },
+            textDocument: {
+              completion: {
+                completionItem: {
+                  snippetSupport: true,
+                  resolveSupport: { properties: ["additionalTextEdits"] },
+                },
+              },
+            },
           },
         },
       ],
@@ -720,6 +728,34 @@ export class LspManager {
 
     if (allItems.length === 0) return null;
     return { isIncomplete, items: allItems };
+  }
+
+  /**
+   * Resolves a completion item via `completionItem/resolve`. Returns the
+   * resolved item (which may include `additionalTextEdits` for auto-imports),
+   * or null if no server could resolve it.
+   */
+  async resolveCompletion(ext: string, item: CompletionItem): Promise<CompletionItem | null> {
+    ext = normalizeExt(ext);
+
+    const entries = this.getEntries(ext);
+    if (entries.length === 0) return null;
+
+    for (const entry of entries) {
+      if (!entry.client) continue;
+
+      try {
+        const resolved = await entry.client.request<
+          CompletionItem,
+          CompletionItem | null
+        >("completionItem/resolve", item);
+        if (resolved) return resolved;
+      } catch {
+        // Server may not support resolve — try the next one.
+      }
+    }
+
+    return null;
   }
 
   async hover(ext: string, filePath: string, pos: number, doc: Text): Promise<Hover | null> {
