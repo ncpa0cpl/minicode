@@ -859,6 +859,9 @@ export class LspManager {
         if (entry?.client) {
           entry.client.disconnect();
         }
+        if (entry?.transport) {
+          entry?.transport.dispose();
+        }
       }
     }
     this.clients.dispatch(() => new Map());
