@@ -257,7 +257,7 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
       class={FileTreeStyles}
       style={{
         width: width,
-        display: sig.when(ctx.fileTreeVisible, "block", "none"),
+        display: sig.when(ctx.fileTreeVisible, "flex", "none"),
       }}
     >
       <div class="file-tree-content">
