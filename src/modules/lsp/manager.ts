@@ -2,7 +2,11 @@ import type { EditorView } from "@codemirror/view";
 import type { Text } from "@codemirror/state";
 import { setDiagnostics, type Diagnostic as CmDiagnostic } from "@codemirror/lint";
 import { LSPClient } from "@codemirror/lsp-client";
-import { adaptTransport, type ServerRequestHandler } from "./transport-adapter";
+import {
+  adaptTransport,
+  LspTransportAdapter,
+  type ServerRequestHandler,
+} from "./transport-adapter";
 import { MinicodeWorkspace, type DisplayFileFn } from "./workspace";
 import { trustHtml } from "./sanitize";
 import type {
@@ -41,6 +45,7 @@ export interface LspEntry {
   config: LspServerConfig;
   awaiter: Promise<void>;
   status: Signal<LspStatus>;
+  transport?: LspTransportAdapter;
 }
 
 const EXT_TO_LANGUAGE_ID: Record<string, string> = {
@@ -254,6 +259,10 @@ export class LspManager {
       oldEntry.client.disconnect();
     }
 
+    if (oldEntry.transport) {
+      oldEntry.transport.dispose();
+    }
+
     // Remove old watched-files registrations for this client.
     if (oldEntry.client) {
       this.watchedFiles = this.watchedFiles.filter((w) => w.client !== oldEntry.client);
@@ -443,6 +452,7 @@ export class LspManager {
         this.logs?.debug(`LSP[${entry.id}] awaiting transport`);
         const transport = await conf.transport({ rootUri: this.rootUri });
         const adapter = adaptTransport(transport, this.logs, serverRequestHandler);
+        entry.transport = adapter;
         this.logs?.debug(`LSP[${entry.id}] connecting`);
         client.connect(adapter);
         await client.initializing;
@@ -454,6 +464,11 @@ export class LspManager {
       } catch (err) {
         entry.status.dispatch("exited");
         this.logs?.error(`Failed to initialize LSP[${entry.id}]`, err);
+
+        if (entry.transport) {
+          entry.transport.dispose();
+          entry.transport = undefined;
+        }
       }
     })();
     return entry;
@@ -745,10 +760,10 @@ export class LspManager {
       if (!entry.client) continue;
 
       try {
-        const resolved = await entry.client.request<
-          CompletionItem,
-          CompletionItem | null
-        >("completionItem/resolve", item);
+        const resolved = await entry.client.request<CompletionItem, CompletionItem | null>(
+          "completionItem/resolve",
+          item,
+        );
         if (resolved) return resolved;
       } catch {
         // Server may not support resolve — try the next one.
