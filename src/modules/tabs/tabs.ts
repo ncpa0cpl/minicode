@@ -5,8 +5,9 @@ import { TabData } from "./types";
 import { File } from "../../files";
 import { Path } from "../../utils/path";
 import { EditorView } from "codemirror";
-import { EditorSelection } from "@codemirror/state";
+import { EditorSelection, StateEffect } from "@codemirror/state";
 import { localSig } from "../../utils/local-signal";
+import { foldable, foldedRanges, foldEffect } from "@codemirror/language";
 
 /**
  * Detects whether a buffer contains binary data by checking for null bytes
@@ -231,25 +232,96 @@ export class TabsContext {
     const scrollTop = view.scrollDOM.scrollTop;
     const scrollLeft = view.scrollDOM.scrollLeft;
 
+    // Anchor the scroll position to the topmost visible line, so that
+    // changes to the content above the viewport (added/removed lines,
+    // restored folds) don't shift what ends up on screen.
+    const topBlock = view.lineBlockAtHeight(scrollTop);
+    const topLine = oldDoc.lineAt(topBlock.from);
+    const topOffset = scrollTop - topBlock.top;
+
     // Preserve cursor by line/column
     const mainRange = oldState.selection.main;
     const oldLine = oldDoc.lineAt(mainRange.head);
     const col = mainRange.head - oldLine.from;
+
+    const oldFoldLines: [no: number, text: string][] = [];
+    foldedRanges(oldState).between(0, oldDoc.length, (from) => {
+      const line = oldState.doc.lineAt(from);
+      oldFoldLines.push([line.number, line.text]);
+    });
 
     view.dispatch({
       changes: { from: 0, to: oldDoc.length, insert: contents },
     });
 
     const newDoc = view.state.doc;
-    const lineNumber = Math.min(oldLine.number, newDoc.lines);
-    const newLine = newDoc.line(lineNumber);
-    const newPos = Math.min(newLine.from + col, newLine.to);
 
+    const findLineByNumber = (lineNo: number, text: string) => {
+      const direct = newDoc.line(Math.min(lineNo, newDoc.lines));
+      if (direct.text.trim() === text.trim()) return direct;
+
+      const searchStart = Math.max(1, lineNo - 5);
+      const searchEnd = Math.min(newDoc.lines, lineNo + 5);
+      for (let i = searchStart; i <= searchEnd; i++) {
+        const line = newDoc.line(i);
+        if (line.text.trim() === text.trim()) return line;
+      }
+      return null;
+    };
+
+    const cursorLine =
+      findLineByNumber(oldLine.number, oldLine.text) ??
+      newDoc.line(Math.min(oldLine.number, newDoc.lines));
+    let newCursorPos = Math.min(cursorLine.from + col, cursorLine.to);
+
+    const foldEffects: [line: number, effect: StateEffect<any>][] = [];
+    for (const [lineNo, lineText] of oldFoldLines) {
+      const line = findLineByNumber(lineNo, lineText.trim());
+      if (!line) continue;
+      const range = foldable(view.state, line.from, line.to);
+      if (range) {
+        foldEffects.push([line.number, foldEffect.of(range)]);
+      }
+    }
+
+    // A transaction that sets a selection clears any folded range the new
+    // selection head lands strictly inside of (foldState in @codemirror/language),
+    // so the cursor has to be moved out of the restored fold ranges,
+    // otherwise the folds are removed by the same transaction that adds them.
+    for (const [, effect] of foldEffects) {
+      const range = effect.value as { from: number; to: number };
+      if (newCursorPos > range.from && newCursorPos < range.to) {
+        newCursorPos = view.state.doc.lineAt(range.from).from;
+      }
+    }
+
+    const anchorLine =
+      findLineByNumber(topLine.number, topLine.text) ??
+      newDoc.line(Math.min(topLine.number, newDoc.lines));
+
+    const effects = foldEffects.sort(([noA], [noB]) => noA - noB).map(([, effect]) => effect);
     view.dispatch({
-      selection: EditorSelection.cursor(newPos),
+      selection: EditorSelection.cursor(newCursorPos),
+      effects: [
+        ...effects,
+        // Restoring the scroll position by writing to scrollDOM.scrollTop
+        // right after dispatch does not work, because the geometry of the
+        // new document (including restored fold widgets) is only measured
+        // in the following animation frame. A scrollIntoView effect is
+        // resolved after that measurement, so the anchor line ends up at
+        // exactly the same offset from the top of the viewport as before.
+        // Note the inverted sign: for y: "start" the effect resolves to
+        // scrollTop = lineTop - yMargin, while topOffset is defined as
+        // scrollTop - lineTop (the part of the line hidden above the
+        // viewport edge), so the margin has to be its negation.
+        EditorView.scrollIntoView(anchorLine.from, { y: "start", yMargin: -topOffset }),
+      ],
     });
 
-    view.scrollDOM.scrollTop = scrollTop;
+    // Best-effort synchronous approximation to reduce flicker before the
+    // effect above is resolved with the measured geometry.
+    const anchorBlock = view.lineBlockAt(anchorLine.from);
+    view.scrollDOM.scrollTop = anchorBlock.top + topOffset;
     view.scrollDOM.scrollLeft = scrollLeft;
   }
 

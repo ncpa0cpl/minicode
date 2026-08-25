@@ -64,6 +64,7 @@ export class FormatterContext {
     if (!fmt) return content;
     this.minicode.logs.debug(`Formatting "${file.path}"`);
     const fmtContent = await fmt({ code: content, filepath: file.path });
+    // if (content === fmtContent) return fmtContent;
     this.minicode.tabs.replaceEditorText(editor, fmtContent);
     return fmtContent;
   }
