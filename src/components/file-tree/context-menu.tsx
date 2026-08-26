@@ -44,7 +44,9 @@ export function useFileContextMenu(ctx: MiniCodeContext) {
     items.push({ label: "New File", action: () => newFile(dirPath) });
     items.push({ label: "New Folder", action: () => newFolder(dirPath) });
 
-    if (target) {
+    const isRootDir = target?.eq(ctx.root);
+
+    if (target && !isRootDir) {
       items.push({ separator: true });
       items.push({
         label: "Cut",
@@ -72,7 +74,7 @@ export function useFileContextMenu(ctx: MiniCodeContext) {
       });
     }
 
-    if (target) {
+    if (target && !isRootDir) {
       items.push({ separator: true });
       items.push({
         label: "Rename",

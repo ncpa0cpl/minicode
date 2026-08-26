@@ -274,7 +274,7 @@ export function FileTree({ ctx }: { ctx: MiniCodeContext }) {
             <CollapseIcon />
           </button>
         </div>
-        <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, null)}>
+        <div class="file-tree" oncontextmenu={(e: MouseEvent) => openContextMenu(e, ctx.root)}>
           {ctx.root.files().$map((f) => {
             return (
               <div>

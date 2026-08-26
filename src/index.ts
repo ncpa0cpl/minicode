@@ -17,3 +17,4 @@ export type {
 export type { LanguagesConfig, LanguageSpec } from "./languages";
 export type { Theme, ThemeInput, ThemeName } from "./modules/theme/themes";
 export { themeToCssVars } from "./modules/theme/themes";
+export type { MiniCodeContext } from "./context";
