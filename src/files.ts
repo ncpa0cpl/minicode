@@ -29,6 +29,8 @@ export class File {
   private _loadFn?: () => Promise<File>;
   private _loadPromise: Promise<void> | null = null;
 
+  readonly id: string = File.randomID();
+
   constructor(
     path: string | Path,
     isDirectory: boolean,
@@ -211,5 +213,18 @@ export class File {
     renamed._loadFn = this._loadFn;
     renamed._loadPromise = this._loadPromise;
     return renamed;
+  }
+
+  static ID_ALPHABET = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
+  static randomID() {
+    const typedArray = new Uint32Array(16);
+    crypto.getRandomValues(typedArray);
+
+    let id = "";
+    for (const num of typedArray) {
+      id += File.ID_ALPHABET[num % File.ID_ALPHABET.length];
+    }
+
+    return id;
   }
 }

@@ -343,7 +343,12 @@ function FileTreeDirectory(props: {
     <div>
       <button
         type="button"
-        class={{ row: true, dir: true, expanded }}
+        class={{
+          row: true,
+          dir: true,
+          expanded,
+          [`file-id-${dir.id}`]: true,
+        }}
         style={{ "--level": String(level) }}
         onclick={toggle}
         oncontextmenu={(e: MouseEvent) => onContextMenu(e, dir)}
@@ -426,7 +431,11 @@ function FileTreeFile(props: {
   return (
     <button
       type="button"
-      class={{ row: true, active }}
+      class={{
+        row: true,
+        active,
+        [`file-id-${file.id}`]: true,
+      }}
       style={{ "--level": String(level) }}
       onclick={() => ctx.tabs.open(file)}
       oncontextmenu={(e: MouseEvent) => onContextMenu(e, file)}

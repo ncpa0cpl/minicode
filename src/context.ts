@@ -512,6 +512,19 @@ export class MiniCodeContext {
     return searchFile;
   }
 
+  async revealInSidebar(path: string | Path) {
+    const f = await this.expandAll(path);
+    if (f && f.eq(path)) {
+      const fileBtn = this.elem.querySelector(`.file-id-${f.id}`);
+      if (fileBtn) {
+        fileBtn.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }
+  }
+
   titlebarCustomLeftButtons() {
     return this.opts.titleBarButtons?.filter((b) => b.position === "left") ?? [];
   }

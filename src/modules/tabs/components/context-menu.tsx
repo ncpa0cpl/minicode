@@ -60,6 +60,12 @@ export function useTabsContextMenu(ctx: MiniCodeContext) {
         ctx.tabs.saveAndCloseAll();
       },
     });
+    items.push({
+      label: "Reveal in sidebar",
+      action: () => {
+        ctx.revealInSidebar(tab.file.path);
+      },
+    });
 
     return items;
   };
