@@ -86,6 +86,30 @@ export class TerminalsContext {
         fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
         theme: this.getXtermTheme(),
       });
+      term.attachCustomKeyEventHandler((ev) => {
+        // paste
+        if (ev.key === "v" && ev.ctrlKey && ev.shiftKey && !(ev.metaKey || ev.altKey)) {
+          ev.preventDefault();
+          navigator.clipboard
+            .readText()
+            .then((text) => {
+              if (!text) return;
+              term.paste(text);
+            })
+            .catch(() => {});
+          return false;
+        }
+
+        // copy
+        if (ev.key === "c" && ev.ctrlKey && ev.shiftKey && !(ev.metaKey || ev.altKey)) {
+          ev.preventDefault();
+          const text = term.getSelection();
+          navigator.clipboard.writeText(text).catch(() => {});
+          return false;
+        }
+
+        return true;
+      });
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
 

@@ -80,21 +80,41 @@ export type CustomKeybind = {
 
 function copyCommand(view: EditorView): boolean {
   const sel = view.state.selection.main;
-  if (sel.from === sel.to) return false;
-  const text = view.state.sliceDoc(sel.from, sel.to);
+
+  let text: string;
+  if (sel.from === sel.to) {
+    const line = view.state.doc.lineAt(sel.from);
+    text = line.text;
+  } else {
+    text = view.state.sliceDoc(sel.from, sel.to);
+  }
+
   navigator.clipboard.writeText(text).catch(() => {});
   return true;
 }
 
 function cutCommand(view: EditorView): boolean {
   const sel = view.state.selection.main;
-  if (sel.from === sel.to) return false;
-  const text = view.state.sliceDoc(sel.from, sel.to);
+
+  let text: string;
+  if (sel.from === sel.to) {
+    const line = view.state.doc.lineAt(sel.from);
+    text = line.text;
+
+    view.dispatch({
+      changes: { from: line.from, to: line.to },
+      userEvent: "input.cut",
+    });
+  } else {
+    text = view.state.sliceDoc(sel.from, sel.to);
+
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to },
+      userEvent: "input.cut",
+    });
+  }
+
   navigator.clipboard.writeText(text).catch(() => {});
-  view.dispatch({
-    changes: { from: sel.from, to: sel.to },
-    userEvent: "input.cut",
-  });
   return true;
 }
 
