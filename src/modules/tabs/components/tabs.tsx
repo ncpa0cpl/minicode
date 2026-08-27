@@ -4,7 +4,7 @@ import { bindSignal, Range } from "@ncpa0cpl/vanilla-jsx";
 import { TabData } from "../types";
 import { useTabsContextMenu } from "./context-menu";
 import { ContextMenu } from "../../../components/context-menu/context-menu";
-import { CmEditor } from "../../../utils/cm-ext";
+import { IconDiagnosticError, IconDiagnosticWarn } from "../../../components/icons/diagnostic-err";
 const List = Range;
 
 function closeIcon() {
@@ -46,6 +46,32 @@ const TabsStyles = css`
     scrollbar-width: thin;
   }
 
+  .tab-diagnostics {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65em;
+    background: var(--minicode-bg);
+    color: var(--minicode-fg);
+    outline: none;
+    border: none;
+    height: 100%;
+    border-left: 1px solid var(--minicode-border);
+    gap: 0.4em;
+    margin-left: 0.2em;
+
+    & span svg {
+      margin-left: 0.2em;
+    }
+
+    &,
+    & span {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+
   .tab-btn {
     display: flex;
     flex-direction: row;
@@ -56,8 +82,10 @@ const TabsStyles = css`
     & .tab-name {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 0.46em;
-      padding: 0.54em 0.77em 0.54em 0.92em;
+      padding-block: 0.4em;
+      padding-inline: 0.5em;
       border: none;
       background: transparent;
       color: var(--minicode-muted, #6b7280);
@@ -69,6 +97,7 @@ const TabsStyles = css`
       white-space: nowrap;
       max-width: 15.38em;
       overflow: hidden;
+      border-bottom: 2px solid transparent;
 
       & .tab-label {
         overflow: hidden;
@@ -114,7 +143,6 @@ const TabsStyles = css`
       color: var(--minicode-active-fg, #ffffff);
       background: var(--minicode-editor-bg, #1b1f27);
       border-bottom: 2px solid var(--minicode-accent, #4b9fff);
-      padding-bottom: 0.38em;
     }
 
     &.active .tab-close {
@@ -171,6 +199,19 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
     <div class="tab-bar">
       {ctx.tabs.data.$map((t) => {
         const active = ctx.tabs.focused.derive((ft) => !!ft && ft.eq(t.file));
+
+        const diagCounts = t.diagnostics.derive(
+          (diagnostics) => {
+            const errCount = diagnostics.filter((d) => d.severity === "error").length;
+            const warnCount = diagnostics.filter((d) => d.severity === "warning").length;
+            return {
+              errCount,
+              warnCount,
+            };
+          },
+          { compare: (a, b) => a.errCount === b.errCount && a.warnCount === b.warnCount },
+        );
+
         return (
           <div
             class={{ "tab-btn": true, active }}
@@ -189,6 +230,25 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
             <button class="tab-name" onclick={() => ctx.tabs.focus(t.file)}>
               <span class={{ "tab-dot": true, dirty: t.dirty }}></span>
               <span class="tab-label">{t.file.name}</span>
+
+              {diagCounts.derive(({ errCount, warnCount }) => {
+                if (errCount === 0 && warnCount === 0) return <></>;
+
+                return (
+                  <span class="tab-diagnostics">
+                    {errCount > 0 ? (
+                      <span>
+                        {errCount} <IconDiagnosticError />
+                      </span>
+                    ) : null}
+                    {warnCount > 0 ? (
+                      <span>
+                        {warnCount} <IconDiagnosticWarn />
+                      </span>
+                    ) : null}
+                  </span>
+                );
+              })}
             </button>
             <button class="tab-close" onclick={() => ctx.tabs.close(t.file)}>
               {closeIcon()}
@@ -223,22 +283,6 @@ export function Tabs({ ctx }: { ctx: MiniCodeContext }) {
       {tabBar}
       <List data={ctx.tabs.data} into={tabEditor}>
         {(t: TabData) => {
-          if (!t.view) {
-            const cm = new CmEditor(
-              ctx,
-              t.initialContent,
-              (docStr) => {
-                t.dirty.dispatch(docStr !== t.savedContent);
-              },
-              8,
-            );
-
-            t.cme = cm;
-            t.view = cm.editor();
-
-            ctx.registerPlugins(cm, t.file);
-          }
-
           return (
             <div
               class={{

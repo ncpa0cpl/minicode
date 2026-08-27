@@ -61,6 +61,10 @@ export const gnomeLightTheme: Theme = {
   activeFg: "#000000",
   border: "#e0e0e0",
   accent: "#3584e4",
+  info: "#5e99e0",
+  error: "#ff4949",
+  warn: "#edd453",
+  hint: "#9141ac",
 
   editorBg: "#ffffff",
   editorFg: "#333333",

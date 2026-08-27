@@ -8,6 +8,12 @@ import { EditorView } from "codemirror";
 import { EditorSelection, StateEffect } from "@codemirror/state";
 import { localSig } from "../../utils/local-signal";
 import { foldable, foldedRanges, foldEffect } from "@codemirror/language";
+import { CmEditor } from "../../utils/cm-ext";
+import { allDiagnostics } from "../../utils/extensions/minicode-lint-marks";
+import {
+  Diagnostic,
+  diagnosticsFromViewUpdate,
+} from "../../utils/extensions/minicode-lint-diagnostics";
 
 /**
  * Detects whether a buffer contains binary data by checking for null bytes
@@ -75,12 +81,40 @@ export class TabsContext {
           return null;
         }
 
+        const dirty = sig(false);
+
         const content = new TextDecoder().decode(buffer);
+
+        const cm = new CmEditor(
+          this.minicode,
+          content,
+          (docStr) => {
+            dirty.dispatch(docStr !== newTab.savedContent);
+          },
+          8,
+        );
+
+        this.minicode.registerPlugins(cm, file);
+        const editor = cm.editor();
+        const diagnostics = sig<readonly Diagnostic[]>(allDiagnostics(editor.state));
+
+        const removeListener = cm.onUpdate((update) => {
+          const d = diagnosticsFromViewUpdate(update);
+          if (d != null) diagnostics.dispatch(d);
+        });
+
         let newTab: TabData = {
           file,
           initialContent: content,
           savedContent: content,
-          dirty: sig(false),
+          dirty: dirty,
+          cme: cm,
+          view: editor,
+          diagnostics,
+          dispose() {
+            removeListener();
+            editor.destroy();
+          },
         };
 
         this.data.dispatch((prev) => {
@@ -115,6 +149,7 @@ export class TabsContext {
     this.minicode.logs.debug(`Closing tab "${file.path}"`);
     this.data.dispatch((prev) => prev.filter((t) => !t.file.eq(file)));
     this.focusNext(focusedIdx);
+    tab.dispose();
   }
 
   closeAll() {
@@ -125,8 +160,10 @@ export class TabsContext {
         const ok = confirm(`"${tab.file.name}" has unsaved changes. Close anyway?`);
         if (!ok) {
           newTabs.push(tab);
+          continue;
         }
       }
+      tab.dispose();
     }
     this.data.dispatch(newTabs);
     this.focusNext(focusedIdx);
@@ -145,8 +182,11 @@ export class TabsContext {
         const ok = confirm(`"${tab.file.name}" has unsaved changes. Close anyway?`);
         if (!ok) {
           newTabs.push(tab);
+          continue;
         }
       }
+
+      tab.dispose();
     }
     this.data.dispatch(newTabs);
     this.focusNext(focusedIdx);
@@ -154,7 +194,17 @@ export class TabsContext {
 
   closeClean() {
     const focusedIdx = this.focusedIdx;
-    this.data.dispatch((t) => t.filter((t) => t.dirty.get()));
+    this.data.dispatch((t) => {
+      const newTabs: TabData[] = [];
+      for (const tab of t) {
+        if (tab.dirty.get()) {
+          newTabs.push(tab);
+        } else {
+          tab.dispose();
+        }
+      }
+      return newTabs;
+    });
     this.focusNext(focusedIdx);
   }
 
@@ -186,6 +236,7 @@ export class TabsContext {
           this.minicode.logs.debug(`Saving file "${tab.file.path}" (${content.length} bytes)`);
           await fs.writeFile(tab.file.path, content);
           this.minicode.lsp.onFileChange(tab.file.path, "change");
+          tab.dispose();
         } catch (err) {
           this.minicode.logs.error(`Failed to save file "${tab.file.path}"`, err);
           newTabs.push(tab);

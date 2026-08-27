@@ -12,6 +12,10 @@ export interface Theme {
   activeFg: string;
   border: string;
   accent: string;
+  info: string;
+  error: string;
+  warn: string;
+  hint: string;
 
   editorBg: string;
   editorFg: string;

@@ -79,9 +79,7 @@ export class MockTransport implements LspTransport {
  * Create a factory that returns a pre-made mock transport. The transport
  * is accessible via `.transport` for inspection and injecting responses.
  */
-export function createMockFactory(
-  transport: MockTransport,
-): LspTransportFactory {
+export function createMockFactory(transport: MockTransport): LspTransportFactory {
   return (_ctx: LspTransportContext) => transport;
 }
 

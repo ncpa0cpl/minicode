@@ -1,6 +1,5 @@
 import type { EditorView } from "@codemirror/view";
 import type { Text } from "@codemirror/state";
-import { setDiagnostics, type Diagnostic as CmDiagnostic } from "@codemirror/lint";
 import { LSPClient } from "@codemirror/lsp-client";
 import {
   adaptTransport,
@@ -23,6 +22,10 @@ import type {
 import { toUri as toUriFn } from "./types";
 import type { LogContext } from "../log/log";
 import type { LspServerConfig } from "../../mini-code";
+import {
+  type Diagnostic as CmDiagnostic,
+  setDiagnostics,
+} from "../../utils/extensions/minicode-lint-diagnostics";
 import { sig, Signal, type ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
 
 interface OpenDoc {
@@ -849,7 +852,7 @@ export class LspManager {
         source: d.source,
       } as CmDiagnostic;
     });
-    view.dispatch(setDiagnostics(view.state, cmDiagnostics));
+    view.dispatch(setDiagnostics(cmDiagnostics));
   }
 
   dispose() {
@@ -898,10 +901,10 @@ function lspSeverityToCm(sev: number | undefined): "error" | "warning" | "info" 
     case 1:
       return "error";
     case 2:
-      return "warning";
     case 3:
     case 4:
-      return "info";
+      return "warning";
+    // return "info";
     default:
       return "warning";
   }

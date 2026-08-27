@@ -22,7 +22,9 @@ declare const trustedTypes:
  */
 export function trustHtml(html: string): string {
   if (typeof trustedTypes === "undefined") return html;
-  return trustedTypes!.createPolicy("myEscapePolicy", {
-    createHTML: (str: string) => str,
-  }).createHTML(html) as unknown as string;
+  return trustedTypes!
+    .createPolicy("myEscapePolicy", {
+      createHTML: (str: string) => str,
+    })
+    .createHTML(html) as unknown as string;
 }

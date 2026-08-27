@@ -13,6 +13,10 @@ export const lightTheme: Theme = {
   activeFg: "#000000",
   border: "#dddddd",
   accent: "#007acc",
+  info: "#7272eb",
+  error: "#ea3424",
+  warn: "#ebcd19",
+  hint: "#00897b",
 
   editorBg: "#ffffff",
   editorFg: "#333333",

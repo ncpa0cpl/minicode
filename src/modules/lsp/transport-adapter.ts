@@ -6,10 +6,7 @@ import type { LogContext } from "../log/log";
  * Handler for server-initiated requests. Return value is sent as the `result`
  * field of the JSON-RPC response. Return `null` to acknowledge without data.
  */
-export type ServerRequestHandler = (
-  method: string,
-  params: unknown,
-) => unknown | Promise<unknown>;
+export type ServerRequestHandler = (method: string, params: unknown) => unknown | Promise<unknown>;
 
 /**
  * Adapts the minicode public {@link LspTransport} (which exchanges parsed

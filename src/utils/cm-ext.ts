@@ -1,10 +1,10 @@
 import { Compartment, Extension } from "@codemirror/state";
 import {
-  highlightActiveLineGutter,
   highlightSpecialChars,
   KeyBinding,
   keymap,
   lineNumbers,
+  ViewUpdate,
 } from "@codemirror/view";
 import { EditorView } from "codemirror";
 import {
@@ -57,15 +57,16 @@ import {
 import { history } from "@codemirror/commands";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { closeBrackets, completionKeymap, deleteBracketPair } from "@codemirror/autocomplete";
-import { lintKeymap, closeLintPanel, nextDiagnostic, openLintPanel } from "@codemirror/lint";
+import { lintGutter } from "./extensions/minicode-lint-gutter";
+import { lintMarks } from "./extensions/minicode-lint-marks";
+import {
+  LintGutterInteractable,
+  showNextDiagnostic,
+  showPrevDiagnostic,
+} from "./extensions/minicode-gutter-interactions";
+import { MinicodeLintTheme } from "./extensions/minicode-lint-theme";
 
-const DefaultCmKeymap = [
-  ...defaultKeymap,
-  ...searchKeymap,
-  ...historyKeymap,
-  ...completionKeymap,
-  ...lintKeymap,
-];
+const DefaultCmKeymap = [...defaultKeymap, ...searchKeymap, ...historyKeymap, ...completionKeymap];
 
 export type EditorCommand = {
   id: string;
@@ -172,9 +173,8 @@ export const editorCommands: EditorCommand[] = [
   { id: "navigate.wordBackward", label: "Cursor to Word Left", run: cursorGroupBackward },
   { id: "navigate.moveLineDown", label: "Move Line Down", run: moveLineDown },
   { id: "navigate.moveLineUp", label: "Move Line Up", run: moveLineUp },
-  { id: "lint.openLintPanel", label: "Open Lint Panel", run: openLintPanel },
-  { id: "lint.closeLintPanel", label: "Close Lint Panel", run: closeLintPanel },
-  { id: "lint.nextDiagnostic", label: "Next Diagnostic", run: nextDiagnostic },
+  { id: "lint.next_diag", label: "Show Next Diagnostic", run: showNextDiagnostic },
+  { id: "lint.prev_diag", label: "Show Previous Diagnostic", run: showPrevDiagnostic },
   { id: "autocomplete:deleteBracketPair", label: "Delete Bracket Pair", run: deleteBracketPair },
 ];
 
@@ -211,6 +211,7 @@ export class CmEditor {
   private freeCompartments: Compartment[] = [];
   private plugins = new Map<string, CmPlugin>();
   private keymapCompartment = new Compartment();
+  private emitter = new EventTarget();
 
   constructor(
     private ctx: MiniCodeContext,
@@ -228,12 +229,13 @@ export class CmEditor {
       extensions: [
         this.keymapCompartment.of(keymap.of(this.keymap())),
 
+        lintMarks(),
         // basic setup
         lineNumbers(),
-        highlightActiveLineGutter(),
         highlightSpecialChars(),
         history(),
         foldGutter(),
+        lintGutter(),
         drawSelection(),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
@@ -248,14 +250,30 @@ export class CmEditor {
         highlightSelectionMatches(),
         // basic setup end
 
+        LintGutterInteractable,
+        MinicodeLintTheme,
         EditorView.updateListener.of((u) => {
           if (u.docChanged) {
             this.onChange(u.state.doc.toString());
           }
+          const ev = new CustomEvent("cm-update", { detail: u });
+          this.emitter.dispatchEvent(ev);
         }),
+
         ...this.freeCompartments.map((c) => c.of([])),
       ],
     });
+  }
+
+  onUpdate(listener: (update: ViewUpdate) => void) {
+    const handler = (ev: CustomEvent<ViewUpdate>) => {
+      listener(ev.detail);
+    };
+
+    this.emitter.addEventListener("cm-update", handler as any);
+    return () => {
+      this.emitter.removeEventListener("cm-update", handler as any);
+    };
   }
 
   editor() {

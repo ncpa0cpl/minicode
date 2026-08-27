@@ -455,7 +455,10 @@ describe("LspManager", () => {
       let id = -1;
       for (const [, list] of allEntries) {
         const found = list.find((e: any) => e.client === original);
-        if (found) { id = found.id; break; }
+        if (found) {
+          id = found.id;
+          break;
+        }
       }
       expect(id).toBeGreaterThan(0);
 
@@ -480,7 +483,10 @@ describe("LspManager", () => {
       let id = -1;
       for (const [, list] of allEntries) {
         const found = list.find((e: any) => e.client === original);
-        if (found) { id = found.id; break; }
+        if (found) {
+          id = found.id;
+          break;
+        }
       }
       expect(id).toBeGreaterThan(0);
 
@@ -511,7 +517,10 @@ describe("LspManager", () => {
       let secondaryId = -1;
       for (const [, list] of allEntries) {
         const secondary = list.find((e: any) => !e.primary);
-        if (secondary) { secondaryId = secondary.id; break; }
+        if (secondary) {
+          secondaryId = secondary.id;
+          break;
+        }
       }
       expect(secondaryId).toBeGreaterThan(0);
 
@@ -544,7 +553,11 @@ describe("LspManager", () => {
       let oldClient: any = null;
       for (const [, list] of allEntries) {
         const found = list.find((e: any) => e.primary);
-        if (found) { id = found.id; oldClient = found.client; break; }
+        if (found) {
+          id = found.id;
+          oldClient = found.client;
+          break;
+        }
       }
       expect(id).toBeGreaterThan(0);
 
@@ -562,7 +575,13 @@ describe("LspManager", () => {
       const transport = new AutoRespondTransport();
       transport.handle("textDocument/diagnostic", () => ({
         kind: "full",
-        items: [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 5 } }, severity: 1, message: "error" }],
+        items: [
+          {
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 5 } },
+            severity: 1,
+            message: "error",
+          },
+        ],
       }));
 
       const servers: LspServerConfig[] = [
@@ -582,7 +601,11 @@ describe("LspManager", () => {
       let oldClient: any = null;
       for (const [, list] of allEntries) {
         const found = list.find((e: any) => e.primary);
-        if (found) { id = found.id; oldClient = found.client; break; }
+        if (found) {
+          id = found.id;
+          oldClient = found.client;
+          break;
+        }
       }
       expect(id).toBeGreaterThan(0);
 
@@ -620,7 +643,10 @@ describe("LspManager", () => {
       let id = -1;
       for (const [, list] of allEntries) {
         const found = list.find((e: any) => e.primary);
-        if (found) { id = found.id; break; }
+        if (found) {
+          id = found.id;
+          break;
+        }
       }
       expect(id).toBeGreaterThan(0);
 
@@ -647,7 +673,10 @@ describe("LspManager", () => {
       let id = -1;
       for (const [, list] of allEntries) {
         const found = list[0];
-        if (found) { id = found.id; break; }
+        if (found) {
+          id = found.id;
+          break;
+        }
       }
       expect(id).toBeGreaterThan(0);
 

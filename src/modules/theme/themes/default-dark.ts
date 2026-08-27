@@ -13,6 +13,10 @@ export const darkTheme: Theme = {
   activeFg: "#ffffff",
   border: "#2a2f3a",
   accent: "#4b9fff",
+  info: "#aaf",
+  error: "#f87",
+  warn: "#fe8",
+  hint: "#8fd6c8",
 
   editorBg: "#1b1f27",
   editorFg: "#cdd3de",
