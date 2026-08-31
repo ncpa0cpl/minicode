@@ -251,7 +251,7 @@ export class TabsContext {
 
   async save(file: File) {
     const tab = this.data.get().find((t) => t.file.eq(file));
-    if (!tab || !tab.view) {
+    if (!tab) {
       return;
     }
     try {

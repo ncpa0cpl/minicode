@@ -726,7 +726,7 @@ export class LspManager {
             CompletionList | CompletionItem[]
           >("textDocument/completion", { textDocument: { uri }, position: lspPos });
           if (Array.isArray(result)) {
-            return { isIncomplete: false, items: result } as CompletionList;
+            return { isIncomplete: false, items: result };
           }
           return result;
         } catch (err) {

@@ -1,6 +1,6 @@
 import { ViewPlugin, hoverTooltip, keymap, EditorView } from "@codemirror/view";
 import type { PluginValue, Tooltip, ViewUpdate } from "@codemirror/view";
-import type { Extension } from "@codemirror/state";
+import { EditorSelection, type Extension } from "@codemirror/state";
 import type { HighlightStyle } from "@codemirror/language";
 import {
   autocompletion,
@@ -176,6 +176,7 @@ export function convertCompletionItem(
               { from, to, insert: insertText },
               ...editsToChanges(view, item.additionalTextEdits!),
             ],
+            selection: EditorSelection.cursor(to),
             userEvent: "input.complete",
           });
         }
@@ -201,6 +202,7 @@ export function convertCompletionItem(
           }
         },
     info: extractDoc(item.documentation),
+    sortText: item.sortText,
   };
 }
 
