@@ -12,7 +12,7 @@ export const gnomeDarkSyntax: HighlightStyle = HighlightStyle.define([
   { tag: t.definitionKeyword, color: "#c678dd" },
   { tag: t.moduleKeyword, color: "#c678dd" },
   { tag: t.operatorKeyword, color: "#c678dd" },
-  { tag: t.self, color: "#e06c75" },
+  { tag: t.self, color: "#e5c07b" },
   { tag: t.null, color: "#d19a66" },
   { tag: t.atom, color: "#d19a66" },
   { tag: t.bool, color: "#d19a66" },
