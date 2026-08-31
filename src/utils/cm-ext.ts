@@ -49,7 +49,7 @@ import {
   moveLineUp,
 } from "@codemirror/commands";
 import {
-  foldAll,
+  foldAll as foldAllTopLvl,
   unfoldAll,
   foldCode,
   toggleFold,
@@ -193,7 +193,7 @@ export const editorCommands: EditorCommand[] = [
   { id: "clipboard.paste", label: "Paste", run: pasteCommand },
   { id: "fold.foldAll", label: "Fold All", run: foldAllCommand },
   { id: "fold.unfoldAll", label: "Unfold All", run: unfoldAll },
-  { id: "fold.foldAllTopLevel", label: "Fold All Top Level", run: foldAll },
+  { id: "fold.foldAllTopLevel", label: "Fold All Top Level", run: foldAllTopLvl },
   { id: "fold.foldCode", label: "Fold Code", run: foldCode },
   { id: "fold.unfoldCode", label: "Unfold Code", run: unfoldCode },
   { id: "fold.toggleFold", label: "Toggle Fold", run: toggleFold },
@@ -261,7 +261,7 @@ function buildCustomKeymap(custom: ReadonlyArray<CustomKeybind>): KeyBinding[] {
 
 export class CmPlugin {
   constructor(
-    private name: string,
+    protected name: string,
     private compartment: Compartment,
     private editor: EditorView,
   ) {}
@@ -395,7 +395,7 @@ export class CmEditor {
       },
       {
         key: "Ctrl-]",
-        run: foldAll,
+        run: foldAllCommand,
       },
       {
         key: "Ctrl-[",
