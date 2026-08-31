@@ -1,4 +1,4 @@
-import { Compartment, Extension } from "@codemirror/state";
+import { Compartment, EditorSelection, Extension, StateEffect } from "@codemirror/state";
 import {
   highlightSpecialChars,
   KeyBinding,
@@ -48,7 +48,16 @@ import {
   moveLineDown,
   moveLineUp,
 } from "@codemirror/commands";
-import { foldAll, unfoldAll, foldCode, toggleFold, unfoldCode } from "@codemirror/language";
+import {
+  foldAll,
+  unfoldAll,
+  foldCode,
+  toggleFold,
+  unfoldCode,
+  foldable,
+  foldEffect,
+  syntaxTree,
+} from "@codemirror/language";
 import { MiniCodeContext } from "../context";
 import {
   drawSelection,
@@ -147,12 +156,44 @@ function pasteCommand(view: EditorView): boolean {
   return true;
 }
 
+function foldAllCommand(view: EditorView): boolean {
+  let moveSelectionTo: null | number = null;
+  const initialSel = view.state.selection.main.to;
+
+  const foldEffects: [line: number, effect: StateEffect<any>][] = [];
+  syntaxTree(view.state).iterate({
+    enter(node) {
+      const range = foldable(view.state, node.from, node.to);
+      if (range) {
+        foldEffects.push([range.from, foldEffect.of(range)]);
+        if (initialSel >= range.from && initialSel <= range.to) {
+          moveSelectionTo = range.to + 1;
+        }
+      }
+    },
+  });
+
+  const effects = foldEffects.sort(([noA], [noB]) => noA - noB).map(([, effect]) => effect);
+
+  if (moveSelectionTo != null) {
+    view.dispatch({
+      selection: EditorSelection.cursor(moveSelectionTo),
+      effects,
+    });
+  } else {
+    view.dispatch({ effects });
+  }
+
+  return true;
+}
+
 export const editorCommands: EditorCommand[] = [
   { id: "clipboard.copy", label: "Copy", run: copyCommand },
   { id: "clipboard.cut", label: "Cut", run: cutCommand },
   { id: "clipboard.paste", label: "Paste", run: pasteCommand },
-  { id: "fold.foldAll", label: "Fold All", run: foldAll },
+  { id: "fold.foldAll", label: "Fold All", run: foldAllCommand },
   { id: "fold.unfoldAll", label: "Unfold All", run: unfoldAll },
+  { id: "fold.foldAllTopLevel", label: "Fold All Top Level", run: foldAll },
   { id: "fold.foldCode", label: "Fold Code", run: foldCode },
   { id: "fold.unfoldCode", label: "Unfold Code", run: unfoldCode },
   { id: "fold.toggleFold", label: "Toggle Fold", run: toggleFold },
