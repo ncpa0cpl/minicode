@@ -32,6 +32,7 @@ interface OpenDoc {
   version: number;
   view: EditorView;
   ext: string;
+  lsps: Set<number>;
 }
 
 export type LspStatus = "initializing" | "running" | "exited";
@@ -576,7 +577,7 @@ export class LspManager {
     if (entries.length === 0) return;
 
     const uri = toUriFn(filePath);
-    this.documents.set(uri, { version: 0, view, ext });
+    this.documents.set(uri, { version: 0, view, ext, lsps: new Set(entries.map((l) => l.id)) });
     this.logs?.debug(`LSP open document "${filePath}" (${ext})`);
 
     try {
@@ -640,32 +641,46 @@ export class LspManager {
 
   changeDocument(filePath: string, content: string): void {
     const uri = toUriFn(filePath);
-    const doc = this.documents.get(uri);
-    if (!doc) return;
+    const fdoc = this.documents.get(uri);
+    if (!fdoc) return;
 
-    const entries = this.getEntries(doc.ext);
-    if (entries.length === 0) return;
+    const mainDocEntries = this.getEntries(fdoc.ext);
+    if (mainDocEntries.length === 0) return;
 
-    doc.version++;
+    const relatedLsps = new Set(mainDocEntries.map((e) => e.id));
 
-    for (const entry of entries) {
-      if (!entry.client) continue;
+    const relatedDocs = Array.from(this.documents.values()).filter((doc) => {
+      return relatedLsps.intersection(doc.lsps).size > 0;
+    });
 
-      try {
-        if (entry.primary) {
-          // The primary client syncs through its workspace, which sends
-          // didChange based on the accumulated unsynced changes.
-          entry.client.sync();
-        } else {
-          const params: DidChangeTextDocumentParams = {
-            textDocument: { uri, version: doc.version },
-            contentChanges: [{ text: content }],
-          };
-          entry.client.notification("textDocument/didChange", params);
+    // update all docs that use the same lsps - in case changes in one file
+    // affect the diagnostics of the other ones
+    for (const doc of relatedDocs) {
+      const entries = this.getEntries(doc.ext);
+      if (entries.length === 0) continue;
+
+      doc.version++;
+
+      for (const entry of entries) {
+        if (!entry.client) continue;
+        if (!relatedLsps.has(entry.id)) continue;
+
+        try {
+          if (entry.primary) {
+            // The primary client syncs through its workspace, which sends
+            // didChange based on the accumulated unsynced changes.
+            entry.client.sync();
+          } else {
+            const params: DidChangeTextDocumentParams = {
+              textDocument: { uri, version: doc.version },
+              contentChanges: [{ text: content }],
+            };
+            entry.client.notification("textDocument/didChange", params);
+          }
+          this.requestDiagnostics(entry.client, uri).catch(() => {});
+        } catch (err) {
+          this.logs?.warn(`LSP didChange notify failed for "${filePath}"`, err);
         }
-        this.requestDiagnostics(entry.client, uri).catch(() => {});
-      } catch (err) {
-        this.logs?.warn(`LSP didChange notify failed for "${filePath}"`, err);
       }
     }
   }

@@ -3,7 +3,7 @@ import { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { File } from "../../../files";
 
-import type { CompletionItem, TextEdit } from "../types";
+import type { CompletionItem } from "../types";
 
 // Minimal mock manager with resolveCompletion stub
 class MockManager {
@@ -28,14 +28,6 @@ function createMockView(initialDoc: string) {
 let convertCompletionItem: any;
 
 beforeAll(async () => {
-  // Stub DOMParser and HTMLElement for environments without a DOM (e.g., Bun test runner)
-  // This satisfies vanilla-jsx's optional DOM usage.
-  globalThis.DOMParser = class {
-    parseFromString() {
-      return {};
-    }
-  } as any;
-  globalThis.HTMLElement = class {} as any;
   const mod = await import("../extensions");
   convertCompletionItem = mod.convertCompletionItem;
 });

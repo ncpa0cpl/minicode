@@ -1,12 +1,9 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeAll } from "bun:test";
 import { EditorState, Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { AutoRespondTransport, MockTransport, createMockFactory } from "./mock-transport";
 import { LspManager } from "../manager";
-import { convertCompletionItem } from "../extensions";
-import { File } from "../../../files";
 import type { LspServerConfig } from "../../../mini-code";
-import type { CompletionItem } from "../types";
 
 const ROOT_URI = "file:///test";
 
