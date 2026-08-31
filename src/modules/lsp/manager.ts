@@ -29,6 +29,7 @@ import {
 import { sig, Signal, type ReadonlySignal } from "@ncpa0cpl/vanilla-jsx/signals";
 
 interface OpenDoc {
+  uri: string;
   version: number;
   view: EditorView;
   ext: string;
@@ -577,7 +578,13 @@ export class LspManager {
     if (entries.length === 0) return;
 
     const uri = toUriFn(filePath);
-    this.documents.set(uri, { version: 0, view, ext, lsps: new Set(entries.map((l) => l.id)) });
+    this.documents.set(uri, {
+      uri,
+      version: 0,
+      view,
+      ext,
+      lsps: new Set(entries.map((l) => l.id)),
+    });
     this.logs?.debug(`LSP open document "${filePath}" (${ext})`);
 
     try {
@@ -639,7 +646,7 @@ export class LspManager {
     }
   }
 
-  changeDocument(filePath: string, content: string): void {
+  changeDocument(filePath: string): void {
     const uri = toUriFn(filePath);
     const fdoc = this.documents.get(uri);
     if (!fdoc) return;
@@ -666,18 +673,23 @@ export class LspManager {
         if (!relatedLsps.has(entry.id)) continue;
 
         try {
-          if (entry.primary) {
-            // The primary client syncs through its workspace, which sends
-            // didChange based on the accumulated unsynced changes.
-            entry.client.sync();
-          } else {
-            const params: DidChangeTextDocumentParams = {
-              textDocument: { uri, version: doc.version },
-              contentChanges: [{ text: content }],
-            };
-            entry.client.notification("textDocument/didChange", params);
+          // only send textDocument/didChange to the changed doc
+          if (doc.uri === uri) {
+            if (entry.primary) {
+              // The primary client syncs through its workspace, which sends
+              // didChange based on the accumulated unsynced changes.
+              entry.client.sync();
+            } else {
+              const params: DidChangeTextDocumentParams = {
+                textDocument: { uri: doc.uri, version: doc.version },
+                contentChanges: [{ text: doc.view.state.doc.toString() }],
+              };
+              entry.client.notification("textDocument/didChange", params);
+            }
           }
-          this.requestDiagnostics(entry.client, uri).catch(() => {});
+
+          // request diagnostics should go to all docs
+          this.requestDiagnostics(entry.client, doc.uri).catch(() => {});
         } catch (err) {
           this.logs?.warn(`LSP didChange notify failed for "${filePath}"`, err);
         }

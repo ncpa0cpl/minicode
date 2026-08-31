@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import { EditorState, Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { AutoRespondTransport, MockTransport, createMockFactory } from "./mock-transport";
@@ -199,7 +199,9 @@ describe("LspManager", () => {
       await flush(20);
 
       secondaryTransport.reset();
-      mgr.changeDocument("foo.ts", "const x = 2;");
+      // @ts-ignore
+      view.state = EditorState.create({ doc: "const x = 2;" });
+      mgr.changeDocument("foo.ts");
       await flush();
 
       const didChange = secondaryTransport.findSent("textDocument/didChange");
@@ -212,7 +214,7 @@ describe("LspManager", () => {
 
     it("is a no-op for unregistered documents", () => {
       const mgr = new LspManager([], ROOT_URI, async () => null);
-      mgr.changeDocument("unknown.ts", "content");
+      mgr.changeDocument("unknown.ts");
       // should not throw
     });
   });

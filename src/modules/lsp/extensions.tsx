@@ -121,7 +121,7 @@ class LspDocSyncPlugin implements PluginValue {
 
   update(update: ViewUpdate) {
     if (update.docChanged) {
-      this.manager.changeDocument(this.file.path, update.state.doc.toString());
+      this.manager.changeDocument(this.file.path);
     }
   }
 
