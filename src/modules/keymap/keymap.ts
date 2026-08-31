@@ -6,7 +6,6 @@ function openTabCmd(idx: number): MinicodeKeybind["run"] {
     const tab = ctx.tabs.data.get().at(idx);
     if (!tab) return;
     ctx.tabs.focus(tab.file);
-    ctx.elem.focus();
   };
 }
 

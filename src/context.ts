@@ -1,5 +1,5 @@
 import { sig, type Signal } from "@ncpa0cpl/vanilla-jsx/signals";
-import { Compartment, Extension } from "@codemirror/state";
+import { Extension } from "@codemirror/state";
 import { File } from "./files";
 import {
   Filesystem,
@@ -41,7 +41,6 @@ export class MiniCodeContext {
   abort = new AbortController();
   shadowRoot!: ShadowRoot;
   elem!: HTMLDivElement;
-  private languageCompartment = new Compartment();
   fileTreeWidth: Signal<number>;
   storage: Storage;
   terminals: TerminalsContext;

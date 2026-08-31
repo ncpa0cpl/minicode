@@ -132,6 +132,8 @@ export class TabsContext {
 
   focus(file: File) {
     this.focused.dispatch(file);
+    const focusedTab = this.data.get().find((tab) => tab.file.eq(file));
+    focusedTab?.view.focus();
   }
 
   close(file: File) {
