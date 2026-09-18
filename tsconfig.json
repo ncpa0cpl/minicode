@@ -20,5 +20,5 @@
     "skipLibCheck": true,
     "types": ["node", "bun"]
   },
-  "exclude": ["scripts", "dist"]
+  "exclude": ["scripts", "dist", "global-mocks.ts"]
 }
