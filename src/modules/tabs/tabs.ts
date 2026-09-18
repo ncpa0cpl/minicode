@@ -136,6 +136,11 @@ export class TabsContext {
     focusedTab?.view.focus();
   }
 
+  private isFocusedTabOpen() {
+    const focused = this.focused.get();
+    return focused && this.data.get().some((tab) => focused.eq(tab.file));
+  }
+
   close(file: File) {
     const focusedIdx = this.focusedIdx;
     const tab = this.data.get().find((t) => t.file.eq(file));
@@ -150,7 +155,9 @@ export class TabsContext {
     }
     this.minicode.logs.debug(`Closing tab "${file.path}"`);
     this.data.dispatch((prev) => prev.filter((t) => !t.file.eq(file)));
-    this.focusNext(focusedIdx);
+    if (this.focused.get()?.eq(tab.file)) {
+      this.focusNext(focusedIdx);
+    }
     tab.dispose();
   }
 
@@ -168,7 +175,10 @@ export class TabsContext {
       tab.dispose();
     }
     this.data.dispatch(newTabs);
-    this.focusNext(focusedIdx);
+
+    if (!this.isFocusedTabOpen()) {
+      this.focusNext(focusedIdx);
+    }
   }
 
   closeOthers(file: File) {
@@ -191,7 +201,10 @@ export class TabsContext {
       tab.dispose();
     }
     this.data.dispatch(newTabs);
-    this.focusNext(focusedIdx);
+
+    if (!this.isFocusedTabOpen()) {
+      this.focusNext(focusedIdx);
+    }
   }
 
   closeClean() {
@@ -207,7 +220,10 @@ export class TabsContext {
       }
       return newTabs;
     });
-    this.focusNext(focusedIdx);
+
+    if (!this.isFocusedTabOpen()) {
+      this.focusNext(focusedIdx);
+    }
   }
 
   async formatContent(file: File) {
@@ -246,7 +262,10 @@ export class TabsContext {
       }
     }
     this.data.dispatch(newTabs);
-    this.focusNext(focusedIdx);
+
+    if (!this.isFocusedTabOpen()) {
+      this.focusNext(focusedIdx);
+    }
   }
 
   async save(file: File) {

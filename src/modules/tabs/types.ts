@@ -5,12 +5,12 @@ import { CmEditor } from "../../utils/cm-ext";
 import { Diagnostic } from "../../utils/extensions/minicode-lint-diagnostics";
 
 export type TabData = {
-  file: File;
   initialContent: string;
   savedContent: string;
-  dirty: Signal<boolean>;
+  readonly file: File;
+  readonly dirty: Signal<boolean>;
+  readonly diagnostics: Signal<readonly Diagnostic[]>;
   cme: CmEditor;
   view: EditorView;
-  diagnostics: Signal<readonly Diagnostic[]>;
   dispose(): void;
 };
