@@ -63,6 +63,10 @@ export class TabsContext {
     if (ft) this.focused.dispatch(ft.file);
   }
 
+  findTab(f: File) {
+    return this.data.get().find((t) => t.file.eq(f));
+  }
+
   open(file: File): TabData | Promise<TabData | null> | null {
     const fs = this.minicode.filesystem;
 

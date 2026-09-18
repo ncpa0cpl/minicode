@@ -52,6 +52,14 @@ export class LspContext {
       return null;
     }
 
+    const existingTab = this.minicode.tabs.findTab(file);
+    if (existingTab) {
+      this.minicode.expandAll(existingTab.file.path).catch((err) => {
+        this.minicode.logs.error("File Tree expandAll command failed", err);
+      });
+      return existingTab.view;
+    }
+
     const tab = await this.minicode.tabs.open(file);
     if (!tab) return null;
 
