@@ -94,8 +94,6 @@ export class MinicodeWorkspace extends Workspace {
   }
 
   override async displayFile(uri: string): Promise<EditorView | null> {
-    const file = this.getFile(uri) as WorkspaceFileEntry | null;
-    if (file && file.view) return file.view;
     return this.displayFileFn(uri);
   }
 }
