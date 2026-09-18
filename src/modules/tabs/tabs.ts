@@ -67,7 +67,13 @@ export class TabsContext {
     return this.data.get().find((t) => t.file.eq(f));
   }
 
+  private pendingOpens = new Map<string, Promise<TabData | null>>();
   open(file: File): TabData | Promise<TabData | null> | null {
+    const pending = this.pendingOpens.get(file.path);
+    if (pending) {
+      return pending;
+    }
+
     const fs = this.minicode.filesystem;
 
     const tab = this.data.get().find((t) => t.file.eq(file));
@@ -77,7 +83,7 @@ export class TabsContext {
     }
 
     this.minicode.logs.debug(`Opening file "${file.path}"`);
-    return fs
+    const openOp = fs
       .readFile(file.path)
       .then((buffer) => {
         if (isBinaryBuffer(buffer)) {
@@ -132,6 +138,14 @@ export class TabsContext {
         this.minicode.logs.error(`Failed to open file "${file.path}"`, err);
         return null;
       });
+
+    openOp.finally(() => {
+      this.pendingOpens.delete(file.path);
+    });
+
+    this.pendingOpens.set(file.path, openOp);
+
+    return openOp;
   }
 
   focus(file: File) {

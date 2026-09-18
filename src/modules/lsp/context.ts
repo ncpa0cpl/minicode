@@ -57,6 +57,7 @@ export class LspContext {
       this.minicode.expandAll(existingTab.file.path).catch((err) => {
         this.minicode.logs.error("File Tree expandAll command failed", err);
       });
+      this.minicode.tabs.focus(existingTab.file);
       return existingTab.view;
     }
 
