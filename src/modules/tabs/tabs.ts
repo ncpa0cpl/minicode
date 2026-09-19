@@ -420,6 +420,7 @@ export class TabsContext {
     if (!tab || !tab.view || tab.dirty.get()) return;
 
     try {
+      this.minicode.logs.debug(`Refreshing file "${filePath}"`);
       const fs = this.minicode.filesystem;
       const content = await fs.readFile(filePath, "utf-8");
       if (content === tab.view.state.doc.toString()) return;
@@ -430,8 +431,7 @@ export class TabsContext {
       tab.initialContent = content;
       tab.dirty.dispatch(false);
     } catch (err) {
-      // file may have been deleted
-      this.minicode.logs.debug(`Failed to refresh file "${filePath}"`, err);
+      this.minicode.logs.error(`Failed to refresh file "${filePath}"`, err);
     }
   }
 

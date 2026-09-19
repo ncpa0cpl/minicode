@@ -209,7 +209,13 @@ export class MiniCodeContext {
         this,
         tab.initialContent,
         (docStr) => {
-          tab.dirty.dispatch(docStr !== tab.savedContent);
+          const nextDirty = docStr !== tab.savedContent;
+          tab.dirty.dispatch((prev) => {
+            if (prev !== nextDirty) {
+              this.logs.debug("File content changed, dirty=" + String(nextDirty));
+            }
+            return nextDirty;
+          });
         },
         8,
       );
